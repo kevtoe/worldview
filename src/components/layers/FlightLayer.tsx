@@ -38,8 +38,14 @@ import {
   Cartographic,
   Ellipsoid,
   EllipsoidGeodesic,
-  EllipsoidalOccluder,
 } from 'cesium';
+import * as Cesium from 'cesium';
+
+// EllipsoidalOccluder exists at runtime but is missing from Cesium's TS declarations
+const EllipsoidalOccluder = (Cesium as any).EllipsoidalOccluder as new (
+  ellipsoid: typeof Ellipsoid.WGS84,
+  cameraPosition: Cartesian3,
+) => { isPointVisible(point: Cartesian3): boolean };
 import type { Flight } from '../../hooks/useFlights';
 import { getAirportCoords } from '../../data/airports';
 

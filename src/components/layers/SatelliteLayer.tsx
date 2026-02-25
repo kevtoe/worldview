@@ -1,5 +1,12 @@
 import { Entity, BillboardGraphics, LabelGraphics, PolylineGraphics, useCesium } from 'resium';
-import { Cartesian3, Color, NearFarScalar, VerticalOrigin, HorizontalOrigin, CallbackProperty, Math as CesiumMath, Ellipsoid, EllipsoidalOccluder } from 'cesium';
+import { Cartesian3, Color, NearFarScalar, VerticalOrigin, HorizontalOrigin, CallbackProperty, Math as CesiumMath, Ellipsoid } from 'cesium';
+import * as Cesium from 'cesium';
+
+// EllipsoidalOccluder exists at runtime but is missing from Cesium's TS declarations
+const EllipsoidalOccluder = (Cesium as any).EllipsoidalOccluder as new (
+  ellipsoid: typeof Ellipsoid.WGS84,
+  cameraPosition: Cartesian3,
+) => { isPointVisible(point: Cartesian3): boolean };
 import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { propagate, eciToGeodetic, gstime, degreesLat, degreesLong } from 'satellite.js';
 import type { SatellitePosition } from '../../hooks/useSatellites';
