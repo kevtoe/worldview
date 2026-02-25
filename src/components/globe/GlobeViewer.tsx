@@ -154,6 +154,8 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
     // Only attempt Google tiles if mapTiles === 'google'
     if (mapTiles === 'google' && GOOGLE_API_KEY) {
       try {
+        // Clear any imagery so only the Google 3D tileset provides textures
+        viewer.imageryLayers.removeAll();
         const tileset = await createGooglePhotorealistic3DTileset();
         if (!viewer.isDestroyed()) {
           viewer.scene.primitives.add(tileset);
@@ -203,7 +205,8 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
     if (!viewer || viewer.isDestroyed()) return;
 
     if (mapTiles === 'google' && !google3dReady && GOOGLE_API_KEY) {
-      // Switch to Google 3D Tiles
+      // Switch to Google 3D Tiles — strip OSM imagery first
+      viewer.imageryLayers.removeAll();
       (async () => {
         try {
           const tileset = await createGooglePhotorealistic3DTileset();
@@ -214,10 +217,11 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
           }
         } catch (err) {
           console.warn('Google 3D Tiles failed, staying on OSM.', err);
+          applyOSM(viewer);
         }
       })();
-    } else if (mapTiles === 'osm' && google3dReady) {
-      // Remove Google 3D Tiles and switch to OSM
+    } else if (mapTiles === 'osm') {
+      // Remove Google 3D tileset (if present) and switch to OSM
       if (google3dTilesetRef.current) {
         try {
           viewer.scene.primitives.remove(google3dTilesetRef.current);
