@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* WorldView tactical colour palette */
+@theme {
+  --color-wv-black: #0A0A0A;
+  --color-wv-dark: #111111;
+  --color-wv-panel: #1A1A1A;
+  --color-wv-border: #2A2A2A;
+  --color-wv-muted: #666666;
+  --color-wv-text: #CCCCCC;
+  --color-wv-cyan: #00D4FF;
+  --color-wv-green: #39FF14;
+  --color-wv-amber: #FF9500;
+  --color-wv-red: #FF3B30;
+  --color-wv-teal: #00BFA5;
+}
+
+/* Cesium widget overrides — remove default UI chrome */
+.cesium-viewer .cesium-widget-credits {
+  display: none !important;
+}
+
+.cesium-viewer .cesium-viewer-toolbar {
+  display: none !important;
+}
+
+.cesium-viewer .cesium-viewer-bottom {
+  display: none !important;
+}
+
+.cesium-viewer .cesium-viewer-animationContainer,
+.cesium-viewer .cesium-viewer-timelineContainer,
+.cesium-viewer .cesium-viewer-fullscreenContainer {
+  display: none !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-wv-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-wv-border);
+  border-radius: 2px;
+}
+
+/* Monospace everywhere */
+* {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', monospace;
+}
+
+/* Glow effects for tactical elements */
+.glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+}
+
+.glow-green {
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.6);
+}
+
+.glow-amber {
+  text-shadow: 0 0 8px rgba(255, 149, 0, 0.6);
+}
+
+/* Panel glass effect */
+.panel-glass {
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(42, 42, 42, 0.6);
+}
+
+/* Scanline animation */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.scanline-overlay::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(0, 212, 255, 0.08);
+  animation: scanline 8s linear infinite;
+  pointer-events: none;
+}
+
+/* Film grain overlay — rendered by <FilmGrain /> canvas component */
