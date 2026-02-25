@@ -44,6 +44,27 @@ const DEFAULT_SATELLITE_FILTER: Record<SatelliteCategory, boolean> = {
   other: true,
 };
 
+/**
+ * Convert a viewDirection compass string (e.g. "East", "N-W") to heading
+ * degrees clockwise from North.  Returns null if the string is absent or
+ * unrecognised.
+ */
+function parseViewDirection(dir?: string): number | null {
+  if (!dir) return null;
+  const normalised = dir.trim().toUpperCase().replace(/\s+/g, '');
+  const map: Record<string, number> = {
+    N: 0, NORTH: 0,
+    NE: 45, 'N-E': 45, NORTHEAST: 45, 'NORTH-EAST': 45,
+    E: 90, EAST: 90,
+    SE: 135, 'S-E': 135, SOUTHEAST: 135, 'SOUTH-EAST': 135,
+    S: 180, SOUTH: 180,
+    SW: 225, 'S-W': 225, SOUTHWEST: 225, 'SOUTH-WEST': 225,
+    W: 270, WEST: 270,
+    NW: 315, 'N-W': 315, NORTHWEST: 315, 'NORTH-WEST': 315,
+  };
+  return map[normalised] ?? null;
+}
+
 function App() {
   // Responsive breakpoint
   const isMobile = useIsMobile();
@@ -277,8 +298,19 @@ function App() {
         `<b>Coords:</b> ${cam.latitude.toFixed(4)}°, ${cam.longitude.toFixed(4)}°`,
       ].join('<br/>') as any,
     });
-    // Viewing offset: 2km south + 2km up ≈ 45° angle, ~2.8km distance
-    entity.viewFrom = new Cartesian3(0, -2000, 2000) as any;
+
+    // Street-level viewFrom: close-in with optional heading match
+    // viewFrom is in the entity's local ENU frame (x=East, y=North, z=Up)
+    const ALT = 300;  // metres above ground
+    const DEFAULT_HDG = 160; // degrees — default viewing heading when camera has none
+    const DIST = 200; // metres behind the look-point
+    const headingDeg = parseViewDirection(cam.viewDirection) ?? DEFAULT_HDG;
+    const hRad = CesiumMath.toRadians(headingDeg);
+    entity.viewFrom = new Cartesian3(
+      -DIST * Math.sin(hRad), // east component (negative = behind heading)
+      -DIST * Math.cos(hRad), // north component
+      ALT,
+    ) as any;
 
     cctvTrackEntityRef.current = entity;
 

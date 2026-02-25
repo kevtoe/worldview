@@ -130,6 +130,8 @@ export default function CCTVLayer({ cameras, visible, selectedCameraId }: CCTVLa
         scaleByDistance: new NearFarScalar(5_000, 1.2, 500_000, 0.4),
         translucencyByDistance: new NearFarScalar(1_000, 1.0, 2_000_000, 0.3),
         distanceDisplayCondition: new DistanceDisplayCondition(0, 2_000_000),
+        // Selected camera always renders on top of 3D tiles / terrain
+        disableDepthTestDistance: isSelected ? Number.POSITIVE_INFINITY : 0,
         id: cam, // Store the full CameraFeed object for EntityClickHandler pick detection
       });
 

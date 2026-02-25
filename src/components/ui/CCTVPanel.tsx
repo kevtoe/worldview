@@ -106,10 +106,12 @@ export default function CCTVPanel({
   const handleFlyTo = useCallback(() => {
     if (!selectedCamera) return;
     onFlyToCamera(selectedCamera);
-    // Auto-minimise the panel so the user can see the globe
-    setVisible(false);
-    setMobileOpen(false);
-  }, [selectedCamera, onFlyToCamera]);
+    // Auto-minimise only on mobile so the user can see the globe
+    if (isMobile) {
+      setVisible(false);
+      setMobileOpen(false);
+    }
+  }, [selectedCamera, onFlyToCamera, isMobile]);
 
   // Paginate: show 30 cameras at a time for performance
   const [page, setPage] = useState(0);
