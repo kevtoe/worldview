@@ -535,6 +535,39 @@ app.get('/api/cctv/image', async (req, res) => {
   }
 });
 
+/** GET /api/geolocation — IP-based location fallback via ip-api.com (free, no key) */
+app.get('/api/geolocation', async (req, res) => {
+  try {
+    // Use client's real IP (forwarded by reverse proxy) or fall back to default
+    const rawIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '';
+    // Detect localhost/loopback — let ip-api.com auto-detect the public IP
+    const isLocal = /^(::1|127\.|::ffff:127\.|0\.0\.0\.0|localhost)/.test(rawIp);
+    const ipParam = isLocal ? '' : rawIp;
+
+    // ip-api.com — free for non-commercial/server-side, no key, returns lat/lon/city/country
+    const apiRes = await fetch(`http://ip-api.com/json/${ipParam}`);
+    const data = await apiRes.json();
+
+    if (data.status !== 'success') {
+      return res.status(502).json({ success: false, error: data.message || 'IP geolocation failed' });
+    }
+
+    res.json({
+      success: true,
+      latitude: data.lat,
+      longitude: data.lon,
+      city: data.city,
+      country: data.country,
+      countryCode: data.countryCode,
+      region: data.regionName,
+      ip: data.query,
+    });
+  } catch (err) {
+    console.error('[GEO] IP geolocation error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 /** Health check */
 app.get('/api/health', (_req, res) => {
   res.json({

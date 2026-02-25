@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { CameraFeed, CameraApiResponse, CameraCountry } from '../types/camera';
 import type { IntelFeedItem } from '../components/ui/IntelFeed';
 
-const API_BASE = 'http://localhost:3001';
 const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const RETRY_BASE = 30_000;
 const RETRY_CAP = 120_000;
@@ -33,7 +32,7 @@ export function useCameras(enabled: boolean, countryFilter: string = 'ALL') {
       const params = new URLSearchParams();
       if (countryFilter !== 'ALL') params.set('country', countryFilter);
 
-      const res = await fetch(`${API_BASE}/api/cctv?${params}`);
+      const res = await fetch(`/api/cctv?${params}`);
       if (!res.ok) throw new Error(`CCTV API HTTP ${res.status}`);
 
       const data: CameraApiResponse = await res.json();

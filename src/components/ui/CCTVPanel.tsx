@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { CameraFeed, CameraCountry } from '../../types/camera';
 
-const IMAGE_PROXY = 'http://localhost:3001/api/cctv/image';
+const IMAGE_PROXY = '/api/cctv/image';
 
 interface CCTVPanelProps {
   cameras: CameraFeed[];

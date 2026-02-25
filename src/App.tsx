@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Viewer as CesiumViewer, Cartesian3, Math as CesiumMath, Entity as CesiumEntity } from 'cesium';
 import type { CameraFeed } from './types/camera';
 import GlobeViewer from './components/globe/GlobeViewer';
@@ -23,6 +23,7 @@ import { useFlights } from './hooks/useFlights';
 import { useFlightsLive } from './hooks/useFlightsLive';
 import { useTraffic } from './hooks/useTraffic';
 import { useCameras } from './hooks/useCameras';
+import { useGeolocation } from './hooks/useGeolocation';
 import type { ShaderMode } from './shaders/postprocess';
 import type { IntelFeedItem } from './components/ui/IntelFeed';
 import type { TrackedEntityInfo } from './components/globe/EntityClickHandler';
@@ -152,6 +153,35 @@ function App() {
     totalCameras: cctvTotal,
     availableCountries: cctvCountries,
   } = useCameras(layers.cctv, cctvCountryFilter);
+
+  // Geolocation hook — browser GPS (consent) + IP fallback
+  const { location: geoLocation, status: geoStatus, locate: geoLocate } = useGeolocation();
+
+  // Fly to user's location when geolocation succeeds
+  useEffect(() => {
+    if (!geoLocation || geoStatus !== 'success') return;
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+
+    // Choose altitude based on precision: GPS → street level, IP → city level
+    const flyAltitude = geoLocation.source === 'gps' ? 5_000 : 200_000;
+
+    viewer.trackedEntity = undefined;
+    setTrackedEntity(null);
+    viewer.camera.flyTo({
+      destination: Cartesian3.fromDegrees(
+        geoLocation.longitude,
+        geoLocation.latitude,
+        flyAltitude,
+      ),
+      orientation: {
+        heading: CesiumMath.toRadians(0),
+        pitch: CesiumMath.toRadians(-45),
+        roll: 0,
+      },
+      duration: 2.5,
+    });
+  }, [geoLocation, geoStatus]);
 
   // Smart layer swap: live (adsb.fi 5s) replaces global (FR24 30s) for matching aircraft.
   // Global aircraft outside the live region remain visible. Zero duplicates guaranteed.
@@ -340,6 +370,8 @@ function App() {
         satCategoryFilter={satCategoryFilter}
         onSatCategoryToggle={handleSatCategoryToggle}
         onResetView={handleResetView}
+        onLocateMe={geoLocate}
+        geoStatus={geoStatus}
       />
       {layers.cctv ? (
         <CCTVPanel

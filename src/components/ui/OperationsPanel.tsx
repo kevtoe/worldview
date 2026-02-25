@@ -1,6 +1,7 @@
 import type { ShaderMode } from '../../shaders/postprocess';
 import type { AltitudeBand } from '../layers/FlightLayer';
 import type { SatelliteCategory } from '../layers/SatelliteLayer';
+import type { GeoStatus } from '../../hooks/useGeolocation';
 
 interface OperationsPanelProps {
   shaderMode: ShaderMode;
@@ -24,6 +25,8 @@ interface OperationsPanelProps {
   satCategoryFilter: Record<SatelliteCategory, boolean>;
   onSatCategoryToggle: (category: SatelliteCategory) => void;
   onResetView: () => void;
+  onLocateMe: () => void;
+  geoStatus: GeoStatus;
 }
 
 const SHADER_OPTIONS: { value: ShaderMode; label: string; colour: string }[] = [
@@ -70,6 +73,8 @@ export default function OperationsPanel({
   satCategoryFilter,
   onSatCategoryToggle,
   onResetView,
+  onLocateMe,
+  geoStatus,
 }: OperationsPanelProps) {
   return (
     <div className="fixed top-4 left-4 w-56 panel-glass rounded-lg overflow-hidden z-40 select-none max-h-[calc(100vh-2rem)] overflow-y-auto">
@@ -245,8 +250,32 @@ export default function OperationsPanel({
         </div>
       )}
 
-      {/* Reset View */}
-      <div className="p-3 border-t border-wv-border">
+      {/* Locate Me + Reset View */}
+      <div className="p-3 border-t border-wv-border flex flex-col gap-1">
+        <button
+          onClick={onLocateMe}
+          disabled={geoStatus === 'requesting'}
+          className={`
+            w-full px-3 py-2 rounded text-[10px] font-bold tracking-wider
+            transition-all duration-200 flex items-center justify-center gap-2
+            ${geoStatus === 'requesting'
+              ? 'text-wv-cyan/50 bg-wv-cyan/5 cursor-wait'
+              : geoStatus === 'success'
+                ? 'text-wv-green bg-wv-green/10 hover:bg-wv-green/20'
+                : 'text-wv-cyan bg-wv-cyan/10 hover:bg-wv-cyan/20'
+            }
+          `}
+        >
+          <span>{geoStatus === 'requesting' ? '◌' : '◎'}</span>
+          <span>
+            {geoStatus === 'requesting'
+              ? 'LOCATING…'
+              : geoStatus === 'success'
+                ? 'RE-LOCATE'
+                : 'LOCATE ME'
+            }
+          </span>
+        </button>
         <button
           onClick={onResetView}
           className="w-full px-3 py-2 rounded text-[10px] font-bold tracking-wider
