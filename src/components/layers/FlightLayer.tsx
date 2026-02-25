@@ -546,7 +546,16 @@ export default function FlightLayer({ flights, visible, showPaths, altitudeFilte
         // Scale up the tracked billboard, restore normal scale for the rest
         if (icao === trackedId) {
           prims.billboard.scale = TRACKED_SCALE;
+          // Screen-aligned mode: compensate rotation for camera heading so the
+          // icon always points along the flight path regardless of orbit angle
+          prims.billboard.alignedAxis = Cartesian3.ZERO;
+          const st = flightStateRef.current.get(icao);
+          if (st && st.heading != null) {
+            prims.billboard.rotation = viewer.camera.heading - CesiumMath.toRadians(st.heading);
+          }
         } else {
+          // Non-tracked: globe-fixed heading via UNIT_Z axis
+          prims.billboard.alignedAxis = Cartesian3.UNIT_Z;
           const state = flightStateRef.current.get(icao);
           prims.billboard.scale = state ? getAltitudeScale(state.alt / 0.3048) : 0.3;
         }
