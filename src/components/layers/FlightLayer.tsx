@@ -127,9 +127,9 @@ function getAltitudeColor(altFeet: number): Color {
 
 /** Billboard scale by altitude — larger icons for higher aircraft */
 function getAltitudeScale(altFeet: number): number {
-  if (altFeet >= 30_000) return 0.45;
-  if (altFeet >= 15_000) return 0.38;
-  return 0.3;
+  if (altFeet >= 30_000) return 1.8;
+  if (altFeet >= 15_000) return 1.52;
+  return 1.2;
 }
 
 /* ─── great-circle route line builder ─────────────────────────────── */
@@ -371,7 +371,7 @@ export default function FlightLayer({ flights, visible, showPaths, altitudeFilte
           alignedAxis: Cartesian3.UNIT_Z,
           horizontalOrigin: HorizontalOrigin.CENTER,
           verticalOrigin: VerticalOrigin.CENTER,
-          scaleByDistance: new NearFarScalar(1e4, 1.5, 5e7, 0.2),
+          scaleByDistance: new NearFarScalar(1e4, 6, 5e7, 0.8),
           disableDepthTestDistance: 0,
           id: backingEntity,
         });
