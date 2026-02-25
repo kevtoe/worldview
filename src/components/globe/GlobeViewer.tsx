@@ -140,7 +140,7 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
   const handleViewerReady = useCallback(async (viewer: CesiumViewer) => {
     viewerRef.current = viewer;
 
-    // Ensure globe is fully opaque — prevent transparent rendering
+    // Configure globe defaults
     const globe = viewer.scene.globe;
     if (globe) {
       globe.baseColor = Color.BLACK;
@@ -154,8 +154,10 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
     // Only attempt Google tiles if mapTiles === 'google'
     if (mapTiles === 'google' && GOOGLE_API_KEY) {
       try {
-        // Clear any imagery so only the Google 3D tileset provides textures
+        // Clear imagery & hide the globe so its black surface doesn't bleed
+        // through gaps in the Google 3D tileset
         viewer.imageryLayers.removeAll();
+        if (globe) globe.show = false;
         const tileset = await createGooglePhotorealistic3DTileset();
         if (!viewer.isDestroyed()) {
           viewer.scene.primitives.add(tileset);
@@ -164,9 +166,11 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
         }
       } catch (err) {
         console.warn('Google 3D Tiles failed to load — falling back to OSM.', err);
+        if (globe) globe.show = true;
         applyOSM(viewer);
       }
     } else {
+      if (globe) globe.show = true;
       applyOSM(viewer);
     }
 
@@ -204,9 +208,12 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
 
+    const globe = viewer.scene.globe;
+
     if (mapTiles === 'google' && !google3dReady && GOOGLE_API_KEY) {
-      // Switch to Google 3D Tiles — strip OSM imagery first
+      // Switch to Google 3D Tiles — hide globe & strip OSM imagery
       viewer.imageryLayers.removeAll();
+      if (globe) globe.show = false;
       (async () => {
         try {
           const tileset = await createGooglePhotorealistic3DTileset();
@@ -217,6 +224,7 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
           }
         } catch (err) {
           console.warn('Google 3D Tiles failed, staying on OSM.', err);
+          if (globe) globe.show = true;
           applyOSM(viewer);
         }
       })();
@@ -229,6 +237,7 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
         google3dTilesetRef.current = null;
       }
       setGoogle3dReady(false);
+      if (globe) globe.show = true;
       applyOSM(viewer);
     }
   }, [mapTiles, google3dReady]);
