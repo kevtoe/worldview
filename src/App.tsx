@@ -24,6 +24,7 @@ import { useFlightsLive } from './hooks/useFlightsLive';
 import { useTraffic } from './hooks/useTraffic';
 import { useCameras } from './hooks/useCameras';
 import { useGeolocation } from './hooks/useGeolocation';
+import { useIsMobile } from './hooks/useIsMobile';
 import type { ShaderMode } from './shaders/postprocess';
 import type { IntelFeedItem } from './components/ui/IntelFeed';
 import type { TrackedEntityInfo } from './components/globe/EntityClickHandler';
@@ -42,6 +43,9 @@ const DEFAULT_SATELLITE_FILTER: Record<SatelliteCategory, boolean> = {
 };
 
 function App() {
+  // Responsive breakpoint
+  const isMobile = useIsMobile();
+
   // Viewer ref for reset-view functionality
   const viewerRef = useRef<CesiumViewer | null>(null);
 
@@ -353,7 +357,7 @@ function App() {
 
       {/* Tactical UI Overlay */}
       <Crosshair />
-      <TrackedEntityPanel trackedEntity={trackedEntity} />
+      <TrackedEntityPanel trackedEntity={trackedEntity} isMobile={isMobile} />
       <OperationsPanel
         shaderMode={shaderMode}
         onShaderChange={setShaderMode}
@@ -372,8 +376,10 @@ function App() {
         onResetView={handleResetView}
         onLocateMe={geoLocate}
         geoStatus={geoStatus}
+        isMobile={isMobile}
       />
-      {layers.cctv ? (
+      <IntelFeed items={allFeedItems} isMobile={isMobile} />
+      {layers.cctv && (
         <CCTVPanel
           cameras={cctvCameras}
           isLoading={cctvLoading}
@@ -386,13 +392,13 @@ function App() {
           onCountryFilterChange={setCctvCountryFilter}
           onSelectCamera={handleSelectCamera}
           onFlyToCamera={handleFlyToCamera}
+          isMobile={isMobile}
         />
-      ) : (
-        <IntelFeed items={allFeedItems} />
       )}
       <StatusBar
         camera={camera}
         shaderMode={shaderMode}
+        isMobile={isMobile}
         dataStatus={{
           flights: flights.length,
           satellites: satellites.length,

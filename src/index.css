@@ -15,6 +15,27 @@
   --color-wv-teal: #00BFA5;
 }
 
+/* ── Mobile viewport fixes ── */
+/* Prevent iOS Safari bounce / rubber-banding on the main viewport */
+html, body {
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Use dvh (dynamic viewport height) on mobile to account for the address bar */
+@supports (height: 100dvh) {
+  .h-screen {
+    height: 100dvh !important;
+  }
+}
+
+/* Safe-area insets for notched iPhones */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 /* Cesium widget overrides — remove default UI chrome */
 .cesium-viewer .cesium-widget-credits {
   display: none !important;

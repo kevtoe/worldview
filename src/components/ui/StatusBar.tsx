@@ -17,6 +17,7 @@ interface StatusBarProps {
     earthquakes: number;
     cctv: number;
   };
+  isMobile?: boolean;
 }
 
 function formatCoord(value: number, posLabel: string, negLabel: string): string {
@@ -33,7 +34,7 @@ function formatAltitude(metres: number): string {
   return `${metres.toFixed(0)} m`;
 }
 
-export default function StatusBar({ camera, shaderMode, dataStatus }: StatusBarProps) {
+export default function StatusBar({ camera, shaderMode, dataStatus, isMobile = false }: StatusBarProps) {
   const [clock, setClock] = useState(new Date());
 
   useEffect(() => {
@@ -46,6 +47,24 @@ export default function StatusBar({ camera, shaderMode, dataStatus }: StatusBarP
   const lon = formatCoord(camera.longitude, 'E', 'W');
   const alt = formatAltitude(camera.altitude);
   const hdg = `${camera.heading.toFixed(1)}°`;
+
+  // Compact coordinate format for mobile
+  const latShort = `${Math.abs(camera.latitude).toFixed(2)}°${camera.latitude >= 0 ? 'N' : 'S'}`;
+  const lonShort = `${Math.abs(camera.longitude).toFixed(2)}°${camera.longitude >= 0 ? 'E' : 'W'}`;
+  const utcShort = clock.toISOString().slice(11, 19) + 'Z';
+
+  /* ── Mobile: compact single row ── */
+  if (isMobile) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 h-7 panel-glass flex items-center justify-between px-3 text-[9px] text-wv-muted z-50 select-none mobile-safe-bottom">
+        <span className="text-wv-cyan">{latShort} {lonShort}</span>
+        <span className="text-wv-green glow-green font-bold tracking-wider">{utcShort}</span>
+        <span className="text-wv-text">{alt}</span>
+      </div>
+    );
+  }
+
+  /* ── Desktop: full status bar ── */
 
   return (
     <div className="fixed bottom-0 left-0 right-0 h-8 panel-glass flex items-center justify-between px-4 text-[10px] text-wv-muted z-50 select-none">

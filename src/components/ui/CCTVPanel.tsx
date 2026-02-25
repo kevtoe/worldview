@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { CameraFeed, CameraCountry } from '../../types/camera';
+import MobileModal from './MobileModal';
 
 const IMAGE_PROXY = '/api/cctv/image';
 
@@ -15,6 +16,7 @@ interface CCTVPanelProps {
   onCountryFilterChange: (code: string) => void;
   onSelectCamera: (camera: CameraFeed | null) => void;
   onFlyToCamera: (camera: CameraFeed) => void;
+  isMobile?: boolean;
 }
 
 function proxyUrl(url: string): string {
@@ -84,8 +86,10 @@ export default function CCTVPanel({
   onCountryFilterChange,
   onSelectCamera,
   onFlyToCamera,
+  isMobile = false,
 }: CCTVPanelProps) {
   const [visible, setVisible] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [previewImgError, setPreviewImgError] = useState(false);
 
   // Derive selected camera from prop (single source of truth in App)
@@ -102,6 +106,9 @@ export default function CCTVPanel({
   const handleFlyTo = useCallback(() => {
     if (!selectedCamera) return;
     onFlyToCamera(selectedCamera);
+    // Auto-minimise the panel so the user can see the globe
+    setVisible(false);
+    setMobileOpen(false);
   }, [selectedCamera, onFlyToCamera]);
 
   // Paginate: show 30 cameras at a time for performance
@@ -117,27 +124,9 @@ export default function CCTVPanel({
   const pagedCameras = displayCameras.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = pagedCameras.length < displayCameras.length;
 
-  return (
-    <div className="fixed top-4 right-4 w-80 panel-glass rounded-lg overflow-hidden z-40 select-none max-h-[calc(100vh-4rem)] flex flex-col">
-      {/* Header */}
-      <div
-        className="px-3 py-2 border-b border-wv-border flex items-center justify-between cursor-pointer shrink-0"
-        onClick={() => setVisible(!visible)}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-wv-red animate-pulse" />
-          <span className="text-[10px] text-wv-muted tracking-widest uppercase">CCTV Surveillance</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {isLoading && (
-            <div className="w-3 h-3 border border-wv-cyan/40 border-t-wv-cyan rounded-full animate-spin" />
-          )}
-          <span className="text-[10px] text-wv-muted">{visible ? '▼' : '▶'}</span>
-        </div>
-      </div>
-
-      {visible && (
-        <div className="flex flex-col overflow-hidden flex-1">
+  /* ── Shared inner content ── */
+  const panelBody = (
+    <div className="flex flex-col overflow-hidden flex-1">
           {/* Country Filter */}
           <div className="px-3 py-2 border-b border-wv-border shrink-0">
             <div className="text-[8px] text-wv-muted tracking-widest uppercase mb-1.5">Region Filter</div>
@@ -239,7 +228,7 @@ export default function CCTVPanel({
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className={`grid gap-1.5 ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
               {pagedCameras.map((cam) => (
                 <CameraThumbnail
                   key={cam.id}
@@ -253,15 +242,70 @@ export default function CCTVPanel({
             {hasMore && (
               <button
                 onClick={() => setPage((p) => p + 1)}
-                className="w-full mt-2 px-2 py-1.5 rounded text-[9px] text-wv-muted hover:text-wv-text
-                  bg-white/5 hover:bg-white/10 tracking-wider transition-all duration-200"
+                className={`w-full mt-2 px-2 py-1.5 rounded text-[9px] text-wv-muted hover:text-wv-text
+                  bg-white/5 hover:bg-white/10 tracking-wider transition-all duration-200
+                  ${isMobile ? 'min-h-[44px] text-[11px]' : ''}`}
               >
                 LOAD MORE ({displayCameras.length - pagedCameras.length} remaining)
               </button>
             )}
           </div>
         </div>
-      )}
+  );
+
+  /* ── Mobile: badge + full-screen modal ── */
+  if (isMobile) {
+    return (
+      <>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="fixed top-3 right-16 z-40 w-11 h-11 rounded-lg panel-glass
+                     flex items-center justify-center
+                     text-wv-red hover:bg-white/10 transition-colors
+                     select-none active:scale-95"
+          aria-label="Open CCTV surveillance"
+        >
+          <span className="text-lg">📹</span>
+          {totalOnline > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-wv-red
+                             text-[8px] text-white font-bold flex items-center justify-center px-0.5">
+              {totalOnline > 99 ? '99+' : totalOnline}
+            </span>
+          )}
+        </button>
+        <MobileModal
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          title="CCTV Surveillance"
+          icon="📹"
+          accent="bg-wv-red"
+        >
+          {panelBody}
+        </MobileModal>
+      </>
+    );
+  }
+
+  /* ── Desktop: fixed side panel — positioned below IntelFeed ── */
+  return (
+    <div className="fixed top-80 right-4 w-80 panel-glass rounded-lg overflow-hidden z-40 select-none max-h-[calc(100vh-22rem)] flex flex-col">
+      {/* Header */}
+      <div
+        className="px-3 py-2 border-b border-wv-border flex items-center justify-between cursor-pointer shrink-0"
+        onClick={() => setVisible(!visible)}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-wv-red animate-pulse" />
+          <span className="text-[10px] text-wv-muted tracking-widest uppercase">CCTV Surveillance</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {isLoading && (
+            <div className="w-3 h-3 border border-wv-cyan/40 border-t-wv-cyan rounded-full animate-spin" />
+          )}
+          <span className="text-[10px] text-wv-muted">{visible ? '▼' : '▶'}</span>
+        </div>
+      </div>
+      {visible && panelBody}
     </div>
   );
 }
