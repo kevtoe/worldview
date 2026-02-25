@@ -1,6 +1,6 @@
-import { Entity, BillboardGraphics, LabelGraphics, PolylineGraphics } from 'resium';
-import { Cartesian3, Color, NearFarScalar, VerticalOrigin, HorizontalOrigin, CallbackProperty, Math as CesiumMath } from 'cesium';
-import { useEffect, useMemo, useRef, memo } from 'react';
+import { Entity, BillboardGraphics, LabelGraphics, PolylineGraphics, useCesium } from 'resium';
+import { Cartesian3, Color, NearFarScalar, VerticalOrigin, HorizontalOrigin, CallbackProperty, Math as CesiumMath, Ellipsoid, EllipsoidalOccluder } from 'cesium';
+import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { propagate, eciToGeodetic, gstime, degreesLat, degreesLong } from 'satellite.js';
 import type { SatellitePosition } from '../../hooks/useSatellites';
 
@@ -152,6 +152,11 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
     );
   }, [sat.orbitPath]);
 
+  // Far-side occlusion state — only re-renders when visibility toggles
+  const { viewer } = useCesium();
+  const [isFarSide, setIsFarSide] = useState(false);
+  const isFarSideRef = useRef(false);
+
   // Real-time position + heading via satellite.js propagation — throttled to 5 Hz
   const satrecRef = useRef(sat.satrec);
   satrecRef.current = sat.satrec;
@@ -181,6 +186,16 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
               degreesLat(futureGeo.latitude), degreesLong(futureGeo.longitude),
             );
           }
+
+          // Far-side occlusion check — hide satellite when behind the globe
+          if (viewer && !viewer.isDestroyed()) {
+            const occluder = new EllipsoidalOccluder(Ellipsoid.WGS84, viewer.camera.positionWC);
+            const hidden = !occluder.isPointVisible(cachedPositionRef.current);
+            if (hidden !== isFarSideRef.current) {
+              isFarSideRef.current = hidden;
+              setIsFarSide(hidden);
+            }
+          }
         }
       } catch { /* propagation error — keep previous cached position */ }
     };
@@ -188,7 +203,7 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
     const handle = setInterval(updatePosition, 200); // 5 Hz
     return () => clearInterval(handle);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sat.noradId]);
+  }, [sat.noradId, viewer]);
 
   const positionProperty = useMemo(() => {
     return new CallbackProperty(() => cachedPositionRef.current, false);
@@ -205,6 +220,7 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
       {/* Satellite billboard + label */}
       <Entity
         id={`sat-${sat.noradId}`}
+        show={!isFarSide}
         position={positionProperty as any}
         name={sat.name}
         description={`

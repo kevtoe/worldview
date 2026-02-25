@@ -38,6 +38,7 @@ import {
   Cartographic,
   Ellipsoid,
   EllipsoidGeodesic,
+  EllipsoidalOccluder,
 } from 'cesium';
 import type { Flight } from '../../hooks/useFlights';
 import { getAirportCoords } from '../../data/airports';
@@ -392,6 +393,17 @@ export default function FlightLayer({ flights, visible, showPaths, altitudeFilte
         primitiveMapRef.current.set(f.icao24, { billboard, label });
       }
 
+      // Far-side occlusion — hide entities behind the globe
+      if (viewer) {
+        const occluder = new EllipsoidalOccluder(Ellipsoid.WGS84, viewer.camera.positionWC);
+        const vis = occluder.isPointVisible(position);
+        const prims = primitiveMapRef.current.get(f.icao24);
+        if (prims) {
+          prims.billboard.show = vis;
+          prims.label.show = vis && !isTracking;
+        }
+      }
+
       // Heading trail (rebuilt each refresh)
       if (f.heading != null && f.velocityKnots != null && f.velocityKnots >= 50) {
         try {
@@ -508,6 +520,17 @@ export default function FlightLayer({ flights, visible, showPaths, altitudeFilte
 
       const now = Date.now();
       const tracked = viewer.trackedEntity;
+
+      // Far-side occlusion: hide billboards behind the globe (cheap ellipsoid test)
+      const occluder = new EllipsoidalOccluder(Ellipsoid.WGS84, viewer.camera.positionWC);
+      for (const [icao, prims] of primitiveMapRef.current) {
+        const pos = positionMapRef.current.get(icao);
+        if (pos) {
+          const vis = occluder.isPointVisible(pos);
+          prims.billboard.show = vis;
+          prims.label.show = vis;
+        }
+      }
 
       // Tracked flight: dead-reckon every frame
       if (tracked && typeof tracked.id === 'string' && tracked.id.startsWith('flight-')) {
