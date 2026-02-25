@@ -12,6 +12,7 @@ import type { SatelliteCategory } from './components/layers/SatelliteLayer';
 import OperationsPanel from './components/ui/OperationsPanel';
 import StatusBar from './components/ui/StatusBar';
 import IntelFeed from './components/ui/IntelFeed';
+import AudioToggle from './components/ui/AudioToggle';
 import CCTVPanel from './components/ui/CCTVPanel';
 import Crosshair from './components/ui/Crosshair';
 import TrackedEntityPanel from './components/ui/TrackedEntityPanel';
@@ -25,15 +26,16 @@ import { useTraffic } from './hooks/useTraffic';
 import { useCameras } from './hooks/useCameras';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useIsMobile } from './hooks/useIsMobile';
+import { useAudio } from './hooks/useAudio';
 import type { ShaderMode } from './shaders/postprocess';
 import type { IntelFeedItem } from './components/ui/IntelFeed';
 import type { TrackedEntityInfo } from './components/globe/EntityClickHandler';
 
 const DEFAULT_ALTITUDE_FILTER: Record<AltitudeBand, boolean> = {
   cruise: false,
-  high: false,
-  mid: false,
-  low: false,
+  high: true,
+  mid: true,
+  low: true,
   ground: true,
 };
 
@@ -45,6 +47,9 @@ const DEFAULT_SATELLITE_FILTER: Record<SatelliteCategory, boolean> = {
 function App() {
   // Responsive breakpoint
   const isMobile = useIsMobile();
+
+  // Audio engine
+  const audio = useAudio();
 
   // Viewer ref for reset-view functionality
   const viewerRef = useRef<CesiumViewer | null>(null);
@@ -60,11 +65,11 @@ function App() {
 
   // State: data layer visibility
   const [layers, setLayers] = useState({
-    flights: false,
-    satellites: false,
-    earthquakes: false,
+    flights: true,
+    satellites: true,
+    earthquakes: true,
     traffic: false,
-    cctv: false,
+    cctv: true,
   });
 
   // State: CCTV country filter
@@ -238,8 +243,12 @@ function App() {
   );
 
   const handleLayerToggle = useCallback((layer: 'flights' | 'satellites' | 'earthquakes' | 'traffic' | 'cctv') => {
-    setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
-  }, []);
+    setLayers((prev) => {
+      const next = !prev[layer];
+      audio.play(next ? 'toggleOn' : 'toggleOff');
+      return { ...prev, [layer]: next };
+    });
+  }, [audio]);
 
   /** Select a camera in the panel (shows feed preview, no fly) */
   const handleSelectCamera = useCallback((cam: CameraFeed | null) => {
@@ -300,12 +309,14 @@ function App() {
   }, [handleCctvLockOn]);
 
   const handleAltitudeToggle = useCallback((band: AltitudeBand) => {
+    audio.play('click');
     setAltitudeFilter((prev) => ({ ...prev, [band]: !prev[band] }));
-  }, []);
+  }, [audio]);
 
   const handleSatCategoryToggle = useCallback((category: SatelliteCategory) => {
+    audio.play('click');
     setSatCategoryFilter((prev) => ({ ...prev, [category]: !prev[category] }));
-  }, []);
+  }, [audio]);
 
   // Stable altitude filter ref to avoid unnecessary re-renders
   const stableAltitudeFilter = useMemo(() => altitudeFilter, [
@@ -313,9 +324,16 @@ function App() {
     altitudeFilter.low, altitudeFilter.ground,
   ]);
 
+  // Boot complete callback — starts ambient drone
+  const handleBootComplete = useCallback(() => {
+    audio.play('bootComplete');
+    audio.startAmbient();
+    setBooted(true);
+  }, [audio]);
+
   // Splash screen
   if (!booted) {
-    return <SplashScreen onComplete={() => setBooted(true)} />;
+    return <SplashScreen onComplete={handleBootComplete} audio={audio} />;
   }
 
   return (
@@ -360,21 +378,21 @@ function App() {
       <TrackedEntityPanel trackedEntity={trackedEntity} isMobile={isMobile} />
       <OperationsPanel
         shaderMode={shaderMode}
-        onShaderChange={setShaderMode}
+        onShaderChange={(mode) => { audio.play('shaderSwitch'); setShaderMode(mode); }}
         layers={layers}
         onLayerToggle={handleLayerToggle}
         mapTiles={mapTiles}
-        onMapTilesChange={setMapTiles}
+        onMapTilesChange={(t) => { audio.play('click'); setMapTiles(t); }}
         showPaths={showPaths}
-        onShowPathsToggle={() => setShowPaths((p) => !p)}
+        onShowPathsToggle={() => { audio.play('click'); setShowPaths((p) => !p); }}
         altitudeFilter={altitudeFilter}
         onAltitudeToggle={handleAltitudeToggle}
         showSatPaths={showSatPaths}
-        onShowSatPathsToggle={() => setShowSatPaths((p) => !p)}
+        onShowSatPathsToggle={() => { audio.play('click'); setShowSatPaths((p) => !p); }}
         satCategoryFilter={satCategoryFilter}
         onSatCategoryToggle={handleSatCategoryToggle}
-        onResetView={handleResetView}
-        onLocateMe={geoLocate}
+        onResetView={() => { audio.play('click'); handleResetView(); }}
+        onLocateMe={() => { audio.play('click'); geoLocate(); }}
         geoStatus={geoStatus}
         isMobile={isMobile}
       />
@@ -406,6 +424,7 @@ function App() {
           cctv: cctvTotal,
         }}
       />
+      <AudioToggle muted={audio.muted} onToggle={audio.toggleMute} isMobile={isMobile} />
     </div>
   );
 }

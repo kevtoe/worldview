@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00ff88" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#00ff88" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#0A0A0A" stroke="#00ff88" stroke-width="1.5" stroke-opacity="0.6"/>
+
+  <!-- Subtle glow -->
+  <circle cx="32" cy="32" r="28" fill="url(#glow)"/>
+
+  <!-- Globe meridians -->
+  <ellipse cx="32" cy="32" rx="18" ry="18" fill="none" stroke="#00ff88" stroke-width="0.8" stroke-opacity="0.4"/>
+  <ellipse cx="32" cy="32" rx="10" ry="18" fill="none" stroke="#00ff88" stroke-width="0.6" stroke-opacity="0.35"/>
+  <ellipse cx="32" cy="32" rx="4" ry="18" fill="none" stroke="#00ff88" stroke-width="0.5" stroke-opacity="0.25"/>
+
+  <!-- Globe parallels -->
+  <ellipse cx="32" cy="32" rx="18" ry="6" fill="none" stroke="#00ff88" stroke-width="0.6" stroke-opacity="0.3"/>
+  <ellipse cx="32" cy="24" rx="15" ry="4" fill="none" stroke="#00ff88" stroke-width="0.5" stroke-opacity="0.25"/>
+  <ellipse cx="32" cy="40" rx="15" ry="4" fill="none" stroke="#00ff88" stroke-width="0.5" stroke-opacity="0.25"/>
+
+  <!-- Crosshair lines -->
+  <line x1="32" y1="6" x2="32" y2="16" stroke="#00ff88" stroke-width="1.2" stroke-opacity="0.9"/>
+  <line x1="32" y1="48" x2="32" y2="58" stroke="#00ff88" stroke-width="1.2" stroke-opacity="0.9"/>
+  <line x1="6" y1="32" x2="16" y2="32" stroke="#00ff88" stroke-width="1.2" stroke-opacity="0.9"/>
+  <line x1="48" y1="32" x2="58" y2="32" stroke="#00ff88" stroke-width="1.2" stroke-opacity="0.9"/>
+
+  <!-- Crosshair centre reticle -->
+  <circle cx="32" cy="32" r="3" fill="none" stroke="#00ff88" stroke-width="1.2" stroke-opacity="0.9"/>
+  <circle cx="32" cy="32" r="1" fill="#00ff88" fill-opacity="0.8"/>
+
+  <!-- Corner brackets (tactical HUD feel) -->
+  <path d="M10 18 L10 10 L18 10" fill="none" stroke="#00ff88" stroke-width="1" stroke-opacity="0.5"/>
+  <path d="M46 10 L54 10 L54 18" fill="none" stroke="#00ff88" stroke-width="1" stroke-opacity="0.5"/>
+  <path d="M54 46 L54 54 L46 54" fill="none" stroke="#00ff88" stroke-width="1" stroke-opacity="0.5"/>
+  <path d="M18 54 L10 54 L10 46" fill="none" stroke="#00ff88" stroke-width="1" stroke-opacity="0.5"/>
+</svg>

@@ -1,5 +1,5 @@
 import { Entity, BillboardGraphics, LabelGraphics, PolylineGraphics, useCesium } from 'resium';
-import { Cartesian3, Color, NearFarScalar, VerticalOrigin, HorizontalOrigin, CallbackProperty, Math as CesiumMath, Ellipsoid } from 'cesium';
+import { Cartesian3, Color, NearFarScalar, VerticalOrigin, HorizontalOrigin, CallbackProperty, Math as CesiumMath, Ellipsoid, ColorMaterialProperty, ArcType, PolylineDashMaterialProperty } from 'cesium';
 import * as Cesium from 'cesium';
 
 // EllipsoidalOccluder exists at runtime but is missing from Cesium's TS declarations
@@ -268,8 +268,9 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
         <Entity key={`${sat.noradId}-orbit-${orbitPositions.length}`} id={`sat-${sat.noradId}-orbit`} name={`${sat.name} orbit`}>
           <PolylineGraphics
             positions={orbitPositions}
-            width={isISS ? 2 : 1}
-            material={color.withAlpha(isISS ? 0.6 : 0.3)}
+            width={isISS ? 3 : 2}
+            material={new ColorMaterialProperty(color.withAlpha(isISS ? 0.7 : 0.4))}
+            arcType={ArcType.NONE}
             clampToGround={false}
           />
         </Entity>
@@ -280,8 +281,9 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
         <Entity key={`${sat.noradId}-gtrack-${groundTrackPositions.length}`} id={`sat-${sat.noradId}-gtrack`} name={`${sat.name} ground track`}>
           <PolylineGraphics
             positions={groundTrackPositions}
-            width={isISS ? 1.5 : 0.5}
-            material={color.withAlpha(isISS ? 0.25 : 0.1)}
+            width={isISS ? 2 : 1}
+            material={new PolylineDashMaterialProperty({ color: color.withAlpha(isISS ? 0.35 : 0.15), dashLength: 8 })}
+            arcType={ArcType.GEODESIC}
             clampToGround={true}
           />
         </Entity>
@@ -295,8 +297,9 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
               Cartesian3.fromDegrees(sat.longitude, sat.latitude, 0),
               Cartesian3.fromDegrees(sat.longitude, sat.latitude, sat.altitude * 1000),
             ]}
-            width={0.5}
-            material={color.withAlpha(0.15)}
+            width={1}
+            material={new ColorMaterialProperty(color.withAlpha(0.2))}
+            arcType={ArcType.NONE}
           />
         </Entity>
       )}
