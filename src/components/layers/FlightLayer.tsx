@@ -133,10 +133,13 @@ function getAltitudeColor(altFeet: number): Color {
 
 /** Billboard scale by altitude — larger icons for higher aircraft */
 function getAltitudeScale(altFeet: number): number {
-  if (altFeet >= 30_000) return 1.8;
-  if (altFeet >= 15_000) return 1.52;
-  return 1.2;
+  if (altFeet >= 30_000) return 0.45;
+  if (altFeet >= 15_000) return 0.38;
+  return 0.3;
 }
+
+/** Scale applied to the tracked (selected) aircraft billboard — ~32 px on screen */
+const TRACKED_SCALE = 1.0;
 
 /* ─── great-circle route line builder ─────────────────────────────── */
 
@@ -377,7 +380,7 @@ export default function FlightLayer({ flights, visible, showPaths, altitudeFilte
           alignedAxis: Cartesian3.UNIT_Z,
           horizontalOrigin: HorizontalOrigin.CENTER,
           verticalOrigin: VerticalOrigin.CENTER,
-          scaleByDistance: new NearFarScalar(1e4, 6, 5e7, 0.8),
+          scaleByDistance: new NearFarScalar(1e4, 1.5, 5e7, 0.2),
           disableDepthTestDistance: 0,
           id: backingEntity,
         });
@@ -527,14 +530,25 @@ export default function FlightLayer({ flights, visible, showPaths, altitudeFilte
       const now = Date.now();
       const tracked = viewer.trackedEntity;
 
-      // Far-side occlusion: hide billboards behind the globe (cheap ellipsoid test)
+      // Far-side occlusion + tracked-entity scale:
+      // hide billboards behind the globe and enlarge the selected aircraft
       const occluder = new EllipsoidalOccluder(Ellipsoid.WGS84, viewer.camera.positionWC);
+      const trackedId = tracked && typeof tracked.id === 'string' && tracked.id.startsWith('flight-')
+        ? tracked.id.slice(7) : null;
+
       for (const [icao, prims] of primitiveMapRef.current) {
         const pos = positionMapRef.current.get(icao);
         if (pos) {
           const vis = occluder.isPointVisible(pos);
           prims.billboard.show = vis;
           prims.label.show = vis;
+        }
+        // Scale up the tracked billboard, restore normal scale for the rest
+        if (icao === trackedId) {
+          prims.billboard.scale = TRACKED_SCALE;
+        } else {
+          const state = flightStateRef.current.get(icao);
+          prims.billboard.scale = state ? getAltitudeScale(state.alt / 0.3048) : 0.3;
         }
       }
 

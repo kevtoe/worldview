@@ -119,9 +119,9 @@ export default function SatelliteLayer({ satellites, visible, showPaths, categor
         if (!categoryFilter[category]) return null;
 
         const color = isISS ? SAT_COLOR_ISS : SAT_COLOR_DEFAULT;
-        const scale = isISS ? 2.4 : 1.4;
+        const scale = isISS ? 0.6 : 0.35;
 
-        return <MemoSatelliteEntity key={sat.noradId} sat={sat} color={color} scale={scale} isISS={isISS} hideLabel={!!isTracking} showPaths={showPaths} />;
+        return <MemoSatelliteEntity key={sat.noradId} sat={sat} color={color} scale={scale} isISS={isISS} hideLabel={!!isTracking} showPaths={showPaths} isTracked={!!isTracking} />;
       })}
     </>
   );
@@ -135,6 +135,7 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
   isISS,
   hideLabel,
   showPaths,
+  isTracked,
 }: {
   sat: SatellitePosition;
   color: Color;
@@ -142,6 +143,7 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
   isISS: boolean;
   hideLabel: boolean;
   showPaths: boolean;
+  isTracked: boolean;
 }) {
   // Build orbit path positions (at satellite altitude)
   const orbitPositions = useMemo(() => {
@@ -240,12 +242,12 @@ const MemoSatelliteEntity = memo(function SatelliteEntity({
         <BillboardGraphics
           image={getSatelliteIcon()}
           color={color}
-          scale={scale}
+          scale={isTracked ? 1.0 : scale}
           rotation={rotationProperty as any}
           alignedAxis={Cartesian3.UNIT_Z}
           horizontalOrigin={HorizontalOrigin.CENTER}
           verticalOrigin={VerticalOrigin.CENTER}
-          scaleByDistance={new NearFarScalar(1e5, 6, 1e8, 1.2)}
+          scaleByDistance={new NearFarScalar(1e5, 1.5, 1e8, 0.3)}
         />
         <LabelGraphics
           show={!hideLabel}
