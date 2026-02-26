@@ -91,15 +91,15 @@ function getShipIcon(): HTMLCanvasElement {
 /* ─── colour helpers ───────────────────────────────────────────── */
 
 const CATEGORY_COLORS: Record<ShipCategory, Color> = {
-  cargo:     Color.fromCssColorString('#4A9EFF'),  // blue
-  tanker:    Color.fromCssColorString('#FF8C00'),  // orange
-  passenger: Color.fromCssColorString('#00E676'),  // green
-  fishing:   Color.fromCssColorString('#FFD740'),  // amber
-  military:  Color.fromCssColorString('#FF5252'),  // red
-  tug:       Color.fromCssColorString('#CE93D8'),  // purple
-  pleasure:  Color.fromCssColorString('#80DEEA'),  // teal
-  highspeed: Color.fromCssColorString('#FF80AB'),  // pink
-  other:     Color.fromCssColorString('#90A4AE'),  // grey-blue
+  cargo:     Color.fromCssColorString('#00D4FF'),  // bright cyan
+  tanker:    Color.fromCssColorString('#FF9500'),  // vivid orange
+  passenger: Color.fromCssColorString('#39FF14'),  // neon green
+  fishing:   Color.fromCssColorString('#FFE640'),  // bright yellow
+  military:  Color.fromCssColorString('#FF3B30'),  // vivid red
+  tug:       Color.fromCssColorString('#E040FB'),  // bright magenta
+  pleasure:  Color.fromCssColorString('#00FFCC'),  // bright aqua
+  highspeed: Color.fromCssColorString('#FF4081'),  // hot pink
+  other:     Color.fromCssColorString('#FFEB3B'),  // yellow — high-vis against water/terrain
 };
 
 function getShipColor(category: ShipCategory): Color {
@@ -423,6 +423,8 @@ export default function ShipLayer({ ships, visible, isTracking }: ShipLayerProps
         }
         if (mmsi === trackedId) {
           prims.billboard.scale = TRACKED_SCALE;
+          // Render on top of globe so the icon is never clipped
+          prims.billboard.disableDepthTestDistance = Number.POSITIVE_INFINITY;
           prims.billboard.alignedAxis = Cartesian3.ZERO;
           const st = shipStateRef.current.get(mmsi);
           const hdg = st?.heading ?? st?.cog;
@@ -430,6 +432,7 @@ export default function ShipLayer({ ships, visible, isTracking }: ShipLayerProps
             prims.billboard.rotation = viewer.camera.heading - CesiumMath.toRadians(hdg);
           }
         } else {
+          prims.billboard.disableDepthTestDistance = 0;
           prims.billboard.alignedAxis = Cartesian3.UNIT_Z;
           prims.billboard.scale = 0.4;
         }

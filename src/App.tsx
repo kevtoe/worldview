@@ -210,7 +210,7 @@ function App() {
       ),
       orientation: {
         heading: CesiumMath.toRadians(0),
-        pitch: CesiumMath.toRadians(-45),
+        pitch: CesiumMath.toRadians(-90),
         roll: 0,
       },
       duration: 2.5,

@@ -546,6 +546,8 @@ export default function FlightLayer({ flights, visible, showPaths, altitudeFilte
         // Scale up the tracked billboard, restore normal scale for the rest
         if (icao === trackedId) {
           prims.billboard.scale = TRACKED_SCALE;
+          // Render on top of globe so the icon is never clipped
+          prims.billboard.disableDepthTestDistance = Number.POSITIVE_INFINITY;
           // Screen-aligned mode: compensate rotation for camera heading so the
           // icon always points along the flight path regardless of orbit angle
           prims.billboard.alignedAxis = Cartesian3.ZERO;
@@ -555,6 +557,7 @@ export default function FlightLayer({ flights, visible, showPaths, altitudeFilte
           }
         } else {
           // Non-tracked: globe-fixed heading via UNIT_Z axis
+          prims.billboard.disableDepthTestDistance = 0;
           prims.billboard.alignedAxis = Cartesian3.UNIT_Z;
           const state = flightStateRef.current.get(icao);
           prims.billboard.scale = state ? getAltitudeScale(state.alt / 0.3048) : 0.3;

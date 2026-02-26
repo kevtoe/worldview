@@ -10,6 +10,7 @@ interface TrackedEntityPanelProps {
 const TYPE_ICONS: Record<TrackedEntityInfo['entityType'], string> = {
   satellite: '🛰',
   aircraft: '✈',
+  ship: '🚢',
   earthquake: '🌍',
   cctv: '📹',
   unknown: '📍',
@@ -18,6 +19,7 @@ const TYPE_ICONS: Record<TrackedEntityInfo['entityType'], string> = {
 const TYPE_LABELS: Record<TrackedEntityInfo['entityType'], string> = {
   satellite: 'SATELLITE',
   aircraft: 'AIRCRAFT',
+  ship: 'VESSEL',
   earthquake: 'SEISMIC EVENT',
   cctv: 'CCTV CAMERA',
   unknown: 'TARGET',
@@ -26,6 +28,7 @@ const TYPE_LABELS: Record<TrackedEntityInfo['entityType'], string> = {
 const TYPE_COLORS: Record<TrackedEntityInfo['entityType'], string> = {
   satellite: 'text-wv-green',
   aircraft: 'text-wv-cyan',
+  ship: 'text-wv-cyan',
   earthquake: 'text-wv-amber',
   cctv: 'text-wv-red',
   unknown: 'text-wv-muted',

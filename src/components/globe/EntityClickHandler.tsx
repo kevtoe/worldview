@@ -25,7 +25,7 @@ function isHelperEntity(name: string | undefined): boolean {
 
 export interface TrackedEntityInfo {
   name: string;
-  entityType: 'satellite' | 'aircraft' | 'earthquake' | 'cctv' | 'unknown';
+  entityType: 'satellite' | 'aircraft' | 'ship' | 'earthquake' | 'cctv' | 'unknown';
   description: string;
 }
 
@@ -138,7 +138,9 @@ export default function EntityClickHandler({ onTrackEntity, onCctvClick }: Entit
         ? new Cartesian3(0, -500_000, 500_000)    // ~700 km offset for satellites
         : entityType === 'aircraft'
           ? new Cartesian3(0, -30_000, 30_000)     // ~42 km for aircraft
-          : new Cartesian3(0, -200_000, 200_000);  // ~280 km for earthquakes/other
+          : entityType === 'ship'
+            ? new Cartesian3(0, -1_200, 2_100)     // ~2.4 km offset for ships (close overhead)
+            : new Cartesian3(0, -200_000, 200_000);  // ~280 km for earthquakes/other
 
       entity.viewFrom = offset as any;
 
@@ -179,6 +181,9 @@ function classifyEntity(entity: CesiumEntity): TrackedEntityInfo['entityType'] {
   }
   if (desc.includes('callsign') || desc.includes('icao24') || desc.includes('aircraft') || desc.includes('squawk')) {
     return 'aircraft';
+  }
+  if (desc.includes('mmsi') || desc.includes('imo:') || desc.includes('call sign') || desc.includes('destination')) {
+    return 'ship';
   }
   if (desc.includes('magnitude') || desc.includes('depth')) {
     return 'earthquake';
