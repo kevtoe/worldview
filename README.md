@@ -226,38 +226,6 @@ In your Vercel project dashboard:
 
 > **Note:** `VITE_*` variables are embedded in the client bundle at build time. Server-side variables are available to the serverless function at runtime.
 
-### 3. Add a Custom Domain
-
-To point `worldview.kt-o.com` to your Vercel deployment:
-
-1. In your Vercel project → **Settings → Domains**
-2. Enter `worldview.kt-o.com` → click **Add**
-3. Vercel will show you the DNS record to create. Go to your DNS provider for `kt-o.com` and add:
-
-   | Type | Name | Value |
-   |---|---|---|
-   | **CNAME** | `worldview` | `cname.vercel-dns.com` |
-
-   *Alternatively, if `kt-o.com` itself is on Vercel, you can use Vercel Nameservers.*
-
-4. Wait for DNS propagation (usually < 5 minutes)
-5. Vercel automatically provisions an SSL certificate — `https://worldview.kt-o.com` will be live
-
-### 4. Update Google API Key Restrictions
-
-Once the domain is live, update your Google Cloud API key:
-
-1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
-2. Click your API key → **HTTP referrers**
-3. Add `https://worldview.kt-o.com/*`
-4. Remove any old `*.vercel.app` entries you no longer need
-5. Save
-
-### 5. Verify
-
-- Visit `https://worldview.kt-o.com` — globe should load with 3D tiles
-- Check **Network** tab in DevTools — API requests should route to `/api/*` serverless functions
-- Confirm the API key only works from your domain by testing from a different origin (should get 403)
 
 ---
 
