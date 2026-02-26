@@ -7,6 +7,7 @@ import SatelliteLayer from './components/layers/SatelliteLayer';
 import FlightLayer from './components/layers/FlightLayer';
 import TrafficLayer from './components/layers/TrafficLayer';
 import CCTVLayer from './components/layers/CCTVLayer';
+import ShipLayer from './components/layers/ShipLayer';
 import type { AltitudeBand } from './components/layers/FlightLayer';
 import type { SatelliteCategory } from './components/layers/SatelliteLayer';
 import OperationsPanel from './components/ui/OperationsPanel';
@@ -24,6 +25,7 @@ import { useFlights } from './hooks/useFlights';
 import { useFlightsLive } from './hooks/useFlightsLive';
 import { useTraffic } from './hooks/useTraffic';
 import { useCameras } from './hooks/useCameras';
+import { useShips } from './hooks/useShips';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useIsMobile } from './hooks/useIsMobile';
 import { useAudio } from './hooks/useAudio';
@@ -91,6 +93,7 @@ function App() {
     earthquakes: true,
     traffic: false,
     cctv: true,
+    ships: false,
   });
 
   // State: CCTV country filter
@@ -174,6 +177,7 @@ function App() {
     camera.longitude,
     camera.altitude,
   );
+  const { ships, feedItems: shipFeedItems, isLoading: shipsLoading } = useShips(layers.ships);
   const {
     cameras: cctvCameras,
     feedItems: cctvFeedItems,
@@ -253,7 +257,7 @@ function App() {
   }, [flightsGlobal, flightsLive]);
 
   // Combine intel feed items
-  const allFeedItems: IntelFeedItem[] = [...fltFeedItems, ...satFeedItems, ...eqFeedItems, ...cctvFeedItems];
+  const allFeedItems: IntelFeedItem[] = [...fltFeedItems, ...satFeedItems, ...eqFeedItems, ...cctvFeedItems, ...shipFeedItems];
 
   // Handlers
   const handleCameraChange = useCallback(
@@ -263,7 +267,7 @@ function App() {
     []
   );
 
-  const handleLayerToggle = useCallback((layer: 'flights' | 'satellites' | 'earthquakes' | 'traffic' | 'cctv') => {
+  const handleLayerToggle = useCallback((layer: 'flights' | 'satellites' | 'earthquakes' | 'traffic' | 'cctv' | 'ships') => {
     setLayers((prev) => {
       const next = !prev[layer];
       audio.play(next ? 'toggleOn' : 'toggleOff');
@@ -403,6 +407,11 @@ function App() {
           visible={layers.cctv}
           selectedCameraId={selectedCameraId}
         />
+        <ShipLayer
+          ships={ships}
+          visible={layers.ships}
+          isTracking={!!trackedEntity}
+        />
       </GlobeViewer>
 
       {/* Tactical UI Overlay */}
@@ -412,6 +421,7 @@ function App() {
         shaderMode={shaderMode}
         onShaderChange={(mode) => { audio.play('shaderSwitch'); setShaderMode(mode); }}
         layers={layers}
+        layerLoading={{ ships: shipsLoading }}
         onLayerToggle={handleLayerToggle}
         mapTiles={mapTiles}
         onMapTilesChange={(t) => { audio.play('click'); setMapTiles(t); }}
@@ -454,6 +464,7 @@ function App() {
           satellites: satellites.length,
           earthquakes: earthquakes.length,
           cctv: cctvTotal,
+          ships: ships.length,
         }}
       />
       <AudioToggle muted={audio.muted} onToggle={audio.toggleMute} isMobile={isMobile} />

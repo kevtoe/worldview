@@ -568,6 +568,177 @@ app.get('/api/geolocation', async (req, res) => {
   }
 });
 
+// ─── Ship / AIS Tracking (AISStream.io) ──────────────────────
+
+/**
+ * Burst-WebSocket approach for Vercel compatibility:
+ * Opens a WebSocket to AISStream.io for ~20 seconds, collects PositionReport
+ * messages, deduplicates by MMSI (keeps latest), then closes.
+ * Result is cached for 60 seconds so most requests are served instantly.
+ *
+ * 20s burst collects ~2,000-4,000 unique vessels globally.
+ * This avoids the need for a persistent connection — each cache miss
+ * triggers a short-lived burst that fits within Vercel's 30s timeout.
+ */
+async function collectAISBurst(apiKey, durationMs = 20000) {
+  const { WebSocket: WsClient } = await import('ws');
+  const vessels = new Map(); // MMSI → vessel data (dedup, keeps latest)
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      try { ws.close(); } catch { /* ok */ }
+      resolve(Array.from(vessels.values()));
+    }, durationMs);
+
+    let ws;
+    try {
+      ws = new WsClient('wss://stream.aisstream.io/v0/stream');
+    } catch (err) {
+      clearTimeout(timeout);
+      reject(err);
+      return;
+    }
+
+    ws.on('open', () => {
+      console.log('[SHIPS] AISStream WebSocket connected, collecting for', durationMs, 'ms');
+      ws.send(JSON.stringify({
+        APIKey: apiKey,
+        BoundingBoxes: [[[-90, -180], [90, 180]]],
+        FilterMessageTypes: ['PositionReport', 'ShipStaticData'],
+      }));
+    });
+
+    ws.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        const meta = msg.MetaData;
+        if (!meta) return;
+        const mmsi = String(meta.MMSI);
+
+        if (msg.MessageType === 'PositionReport') {
+          const pos = msg.Message?.PositionReport;
+          if (!pos) return;
+          // Merge with existing data (may have static data already)
+          const existing = vessels.get(mmsi) || {};
+          vessels.set(mmsi, {
+            ...existing,
+            mmsi,
+            name: (meta.ShipName || existing.name || '').trim(),
+            latitude: pos.Latitude,
+            longitude: pos.Longitude,
+            heading: pos.TrueHeading === 511 ? null : pos.TrueHeading,
+            cog: pos.Cog >= 360 ? null : pos.Cog,
+            sog: pos.Sog,
+            navStatus: pos.NavigationalStatus ?? null,
+            timestamp: meta.time_utc || new Date().toISOString(),
+            shipType: existing.shipType ?? null,
+            destination: existing.destination ?? null,
+            imo: existing.imo ?? null,
+            callSign: existing.callSign ?? null,
+            length: existing.length ?? null,
+            width: existing.width ?? null,
+            country: meta.country ?? existing.country ?? null,
+            countryCode: meta.country_code ?? existing.countryCode ?? null,
+          });
+        } else if (msg.MessageType === 'ShipStaticData') {
+          const stat = msg.Message?.ShipStaticData;
+          if (!stat) return;
+          const existing = vessels.get(mmsi) || {};
+          vessels.set(mmsi, {
+            ...existing,
+            mmsi,
+            name: (meta.ShipName || stat.Name || existing.name || '').trim(),
+            shipType: stat.Type ?? existing.shipType ?? null,
+            destination: (stat.Destination || '').trim() || existing.destination || null,
+            imo: stat.ImoNumber ?? existing.imo ?? null,
+            callSign: (stat.CallSign || '').trim() || existing.callSign || null,
+            length: stat.Dimension?.A && stat.Dimension?.B
+              ? stat.Dimension.A + stat.Dimension.B : existing.length ?? null,
+            width: stat.Dimension?.C && stat.Dimension?.D
+              ? stat.Dimension.C + stat.Dimension.D : existing.width ?? null,
+            country: meta.country ?? existing.country ?? null,
+            countryCode: meta.country_code ?? existing.countryCode ?? null,
+            // Keep position fields from PositionReport if already present
+            latitude: existing.latitude,
+            longitude: existing.longitude,
+            heading: existing.heading,
+            cog: existing.cog,
+            sog: existing.sog,
+            navStatus: existing.navStatus,
+            timestamp: existing.timestamp,
+          });
+        }
+      } catch { /* skip malformed messages */ }
+    });
+
+    ws.on('error', (err) => {
+      console.error('[SHIPS] AISStream WebSocket error:', err.message);
+      clearTimeout(timeout);
+      // Resolve with whatever we have so far rather than rejecting
+      resolve(Array.from(vessels.values()));
+    });
+
+    ws.on('close', () => {
+      clearTimeout(timeout);
+      resolve(Array.from(vessels.values()));
+    });
+  });
+}
+
+/** GET /api/ships — returns array of vessel positions from AIS
+ *  Query params:
+ *    ?moving=1  — only vessels with SOG > 0.5 kt (excludes moored/anchored)
+ */
+app.get('/api/ships', async (req, res) => {
+  try {
+    const wantMoving = req.query.moving === '1';
+    const cacheKey = wantMoving ? 'ships-moving' : 'ships-all';
+
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log(`[SHIPS] Cache hit (${cacheKey}) — ${cached.length} vessels`);
+      return res.json(cached);
+    }
+
+    // Check if we already have the full dataset cached (avoid redundant burst)
+    let allVessels = cache.get('ships-all');
+    if (!allVessels) {
+      const apiKey = process.env.AISSTREAM_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ error: 'AISSTREAM_API_KEY not configured' });
+      }
+
+      console.log('[SHIPS] Cache miss — starting AIS burst collection (20s)...');
+      const raw = await collectAISBurst(apiKey, 20000);
+
+      // Filter out vessels without valid position
+      allVessels = raw.filter(
+        (v) => v.latitude != null && v.longitude != null &&
+               v.latitude !== 0 && v.longitude !== 0 &&
+               Math.abs(v.latitude) <= 90 && Math.abs(v.longitude) <= 180
+      );
+
+      console.log(`[SHIPS] Collected ${raw.length} raw → ${allVessels.length} with valid position`);
+      cache.set('ships-all', allVessels, 60);
+    }
+
+    // Build moving-only subset
+    // Stationary: navStatus 1 (anchor), 5 (moored), 6 (aground) OR SOG < 0.5 kt
+    const STATIONARY_NAV = new Set([1, 5, 6]);
+    const movingVessels = allVessels.filter(
+      (v) => v.sog > 0.5 && !STATIONARY_NAV.has(v.navStatus)
+    );
+    cache.set('ships-moving', movingVessels, 60);
+
+    const result = wantMoving ? movingVessels : allVessels;
+    console.log(`[SHIPS] Returning ${result.length} vessels (moving=${wantMoving}, total=${allVessels.length}, underway=${movingVessels.length})`);
+    res.json(result);
+  } catch (err) {
+    console.error('[SHIPS] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /** Health check */
 app.get('/api/health', (_req, res) => {
   res.json({

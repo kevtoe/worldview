@@ -4,7 +4,7 @@ import MobileModal from './MobileModal';
 interface IntelFeedItem {
   id: string;
   time: string;
-  type: 'flight' | 'seismic' | 'satellite' | 'system' | 'cctv';
+  type: 'flight' | 'seismic' | 'satellite' | 'system' | 'cctv' | 'ship';
   message: string;
 }
 
@@ -14,6 +14,7 @@ const TYPE_STYLES: Record<string, string> = {
   satellite: 'text-wv-green',
   system: 'text-wv-muted',
   cctv: 'text-wv-red',
+  ship: 'text-wv-cyan',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -22,6 +23,7 @@ const TYPE_LABELS: Record<string, string> = {
   satellite: 'SATS',
   system: 'SYS ',
   cctv: 'CCTV',
+  ship: 'AIS ',
 };
 
 interface IntelFeedProps {

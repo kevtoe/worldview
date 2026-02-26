@@ -14,8 +14,11 @@ interface OperationsPanelProps {
     earthquakes: boolean;
     traffic: boolean;
     cctv: boolean;
+    ships: boolean;
   };
-  onLayerToggle: (layer: 'flights' | 'satellites' | 'earthquakes' | 'traffic' | 'cctv') => void;
+  onLayerToggle: (layer: 'flights' | 'satellites' | 'earthquakes' | 'traffic' | 'cctv' | 'ships') => void;
+  /** Optional per-layer loading state (e.g. ships takes ~20s on first fetch) */
+  layerLoading?: Partial<Record<'flights' | 'satellites' | 'earthquakes' | 'traffic' | 'cctv' | 'ships', boolean>>;
   mapTiles: 'google' | 'osm';
   onMapTilesChange: (tile: 'google' | 'osm') => void;
   showPaths: boolean;
@@ -39,12 +42,13 @@ const SHADER_OPTIONS: { value: ShaderMode; label: string; colour: string }[] = [
   { value: 'flir', label: 'FLIR', colour: 'text-wv-amber' },
 ];
 
-const LAYER_OPTIONS: { key: 'flights' | 'satellites' | 'earthquakes' | 'traffic' | 'cctv'; label: string; icon: string }[] = [
+const LAYER_OPTIONS: { key: 'flights' | 'satellites' | 'earthquakes' | 'traffic' | 'cctv' | 'ships'; label: string; icon: string }[] = [
   { key: 'flights', label: 'LIVE FLIGHTS', icon: '✈' },
   { key: 'satellites', label: 'SATELLITES', icon: '🛰' },
   { key: 'earthquakes', label: 'SEISMIC', icon: '🌍' },
   { key: 'traffic', label: 'STREET TRAFFIC', icon: '🚗' },
   { key: 'cctv', label: 'CCTV FEEDS', icon: '📹' },
+  { key: 'ships', label: 'NAVAL / AIS', icon: '🚢' },
 ];
 
 const ALTITUDE_BANDS: { band: AltitudeBand; label: string; colour: string; dotColour: string }[] = [
@@ -64,6 +68,7 @@ export default function OperationsPanel({
   shaderMode,
   onShaderChange,
   layers,
+  layerLoading = {},
   onLayerToggle,
   mapTiles,
   onMapTilesChange,
@@ -143,25 +148,36 @@ export default function OperationsPanel({
       <div className="p-3 border-b border-wv-border">
         <div className="text-[9px] text-wv-muted tracking-widest uppercase mb-2">Data Layers</div>
         <div className="flex flex-col gap-1">
-          {LAYER_OPTIONS.map(({ key, label, icon }) => (
-            <button
-              key={key}
-              onClick={() => onLayerToggle(key)}
-              className={`
-                flex items-center gap-2 px-2 py-1.5 rounded text-[10px]
-                transition-all duration-200 text-left
-                ${isMobile ? 'min-h-[44px] text-[12px]' : ''}
-                ${layers[key]
-                  ? 'text-wv-green bg-wv-green/10'
-                  : 'text-wv-muted hover:text-wv-text hover:bg-white/5'
-                }
-              `}
-            >
-              <span className="text-sm">{icon}</span>
-              <span className="tracking-wider">{label}</span>
-              <span className={`ml-auto w-1.5 h-1.5 rounded-full ${layers[key] ? 'bg-wv-green' : 'bg-wv-muted/30'}`} />
-            </button>
-          ))}
+          {LAYER_OPTIONS.map(({ key, label, icon }) => {
+            const isOn = layers[key];
+            const isLoading = !!layerLoading[key];
+            return (
+              <button
+                key={key}
+                onClick={() => onLayerToggle(key)}
+                className={`
+                  flex items-center gap-2 px-2 py-1.5 rounded text-[10px]
+                  transition-all duration-200 text-left
+                  ${isMobile ? 'min-h-[44px] text-[12px]' : ''}
+                  ${isOn
+                    ? isLoading ? 'text-wv-amber bg-wv-amber/10' : 'text-wv-green bg-wv-green/10'
+                    : 'text-wv-muted hover:text-wv-text hover:bg-white/5'
+                  }
+                `}
+              >
+                <span className="text-sm">{icon}</span>
+                <span className="tracking-wider">{label}</span>
+                {isOn && isLoading ? (
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <span className="text-[8px] text-wv-amber tracking-wider animate-pulse">LOADING</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-wv-amber animate-pulse" />
+                  </span>
+                ) : (
+                  <span className={`ml-auto w-1.5 h-1.5 rounded-full transition-colors duration-300 ${isOn ? 'bg-wv-green' : 'bg-wv-muted/30'}`} />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

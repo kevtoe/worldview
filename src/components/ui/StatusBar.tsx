@@ -16,6 +16,7 @@ interface StatusBarProps {
     satellites: number;
     earthquakes: number;
     cctv: number;
+    ships: number;
   };
   isMobile?: boolean;
 }
@@ -102,6 +103,9 @@ export default function StatusBar({ camera, shaderMode, dataStatus, isMobile = f
         </span>
         <span>
           CCTV <span className={dataStatus.cctv > 0 ? 'text-wv-red' : 'text-wv-muted'}>{dataStatus.cctv}</span>
+        </span>
+        <span>
+          AIS <span className={dataStatus.ships > 0 ? 'text-wv-cyan' : 'text-wv-muted'}>{dataStatus.ships}</span>
         </span>
         <span className="border-l border-wv-border pl-4">
           OPTICS <span className="text-wv-cyan uppercase">{shaderMode === 'none' ? 'STD' : shaderMode}</span>
