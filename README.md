@@ -13,11 +13,7 @@
   <a href="https://worldview.kt-o.com"><strong>🔗 Live Demo — worldview.kt-o.com</strong></a>
 </p>
 
-<p align="center">
-  <video src="public/demo/preview.mp4" width="800" autoplay loop muted playsinline>
-    Your browser does not support the video tag. <a href="https://worldview.kt-o.com">View the live demo</a>.
-  </video>
-</p>
+https://github.com/user-attachments/assets/b2bd05d2-f7be-49c8-a8c6-452b6b60cb34
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
