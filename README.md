@@ -10,6 +10,16 @@
 </p>
 
 <p align="center">
+  <a href="https://worldview.kt-o.com"><strong>🔗 Live Demo — worldview.kt-o.com</strong></a>
+</p>
+
+<p align="center">
+  <video src="public/demo/preview.mp4" width="800" autoplay loop muted playsinline>
+    Your browser does not support the video tag. <a href="https://worldview.kt-o.com">View the live demo</a>.
+  </video>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/CesiumJS-1.138-6CADDF?logo=cesium&logoColor=white" alt="CesiumJS" />
@@ -80,8 +90,6 @@ The interface features:
 
 - **Node.js** ≥ 18
 - **npm** ≥ 9
-- A **Google Maps API key** (for 3D Photorealistic Tiles — optional, falls back to OpenStreetMap)
-- A **Cesium Ion token** (optional — only for Cesium's own terrain services)
 
 ### Installation
 
@@ -96,30 +104,126 @@ npm install
 
 ### Environment Setup
 
-Create two `.env` files:
+> **⚠️ This repo does NOT ship any API keys. You must obtain your own.**
 
-**`.env`** (client-side — Vite injects `VITE_*` variables at build time):
-```env
-# Google Maps 3D Tiles (optional — falls back to OSM)
-VITE_GOOGLE_API_KEY=your_google_maps_api_key
+Copy the example files and fill in your credentials:
 
-# Cesium Ion (optional)
-VITE_CESIUM_ION_TOKEN=your_cesium_ion_token
-
-# CCTV Sources
-WINDY_API_KEY=your_windy_api_key
-NSW_TRANSPORT_API_KEY=your_nsw_transport_api_key
+```bash
+cp .env.example .env
+cp server/.env.example server/.env
 ```
 
-**`server/.env`** (server-side — loaded by `dotenv`):
-```env
-# Google Maps (server-side, currently unused)
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+Then edit each file with your own API keys (see [Obtaining API Keys](#obtaining-api-keys) below).
 
-# OpenSky Network OAuth2
-OPENSKY_CLIENT_ID=your_opensky_client_id
-OPENSKY_CLIENT_SECRET=your_opensky_client_secret
-```
+**`.env`** — Client-side (Vite injects `VITE_*` variables at build time):
+
+| Variable | Required? | Purpose |
+|---|---|---|
+| `VITE_GOOGLE_API_KEY` | Optional | Google Maps 3D Photorealistic Tiles (falls back to OpenStreetMap) |
+| `VITE_CESIUM_ION_TOKEN` | Optional | Cesium Ion terrain/imagery services |
+| `WINDY_API_KEY` | Optional | Windy webcam API (reserved, not yet active) |
+| `NSW_TRANSPORT_API_KEY` | Optional | Transport for NSW CCTV cameras |
+
+**`server/.env`** — Server-side (loaded by `dotenv`):
+
+| Variable | Required? | Purpose |
+|---|---|---|
+| `GOOGLE_MAPS_API_KEY` | Optional | Server-side Google Maps (currently unused) |
+| `OPENSKY_CLIENT_ID` | Optional | OpenSky Network OAuth2 credentials |
+| `OPENSKY_CLIENT_SECRET` | Optional | OpenSky Network OAuth2 credentials |
+
+> **All layers degrade gracefully** when keys are missing — the globe falls back to OpenStreetMap, CCTV sources without keys are simply skipped, and external APIs that don't require auth (USGS, CelesTrak, adsb.fi) work without any credentials.
+
+---
+
+## Obtaining API Keys
+
+### 🗺️ Google Maps API Key (for 3D Photorealistic Tiles)
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (or select an existing one)
+3. Navigate to **APIs & Services → Library**
+4. Enable the **Map Tiles API**
+5. Go to **APIs & Services → Credentials → Create Credentials → API Key**
+6. **IMPORTANT — Restrict your key immediately** (see [Securing Your Google API Key](#securing-your-google-api-key) below)
+7. Copy the key into `VITE_GOOGLE_API_KEY` in your `.env` file
+
+> Google offers a **US$200/month free tier** which covers approximately 25,000 3D Tiles loads. For personal/demo usage this is typically more than enough — but set a budget alert just in case.
+
+### 🛰️ Cesium Ion Token (optional)
+
+1. Sign up for a free account at [cesium.com/ion](https://ion.cesium.com/tokens)
+2. Go to **Access Tokens** → copy your default token
+3. Paste into `VITE_CESIUM_ION_TOKEN` in your `.env`
+
+### 📹 Transport for NSW API Key (for Australian CCTV cameras)
+
+1. Register at [opendata.transport.nsw.gov.au](https://opendata.transport.nsw.gov.au/)
+2. Go to **My Applications** → **Create Application**
+3. Subscribe to the **Traffic & Cameras** API
+4. Copy your API key into `NSW_TRANSPORT_API_KEY` in your `.env`
+
+### ✈️ OpenSky Network (optional, for WebSocket flight data)
+
+1. Register at [opensky-network.org](https://opensky-network.org/)
+2. Log in → go to **OAuth** → **Create Client**
+3. Copy the client ID and secret into `server/.env`
+
+---
+
+## Securing Your Google API Key
+
+> **This is critical if you deploy this app publicly or share a demo link.**
+
+The `VITE_GOOGLE_API_KEY` is injected into the frontend build at compile time, meaning it **will be visible** in the browser's network requests. To prevent unauthorised usage and unexpected charges:
+
+### 1. Apply HTTP Referrer Restrictions
+
+In the [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials):
+
+1. Click your API key → **Application restrictions**
+2. Select **HTTP referrers (websites)**
+3. Add your allowed domains:
+   ```
+   https://worldview.kt-o.com/*
+   https://your-project.vercel.app/*
+   http://localhost:5173/*
+   http://localhost:3001/*
+   ```
+4. Save
+
+This means the key **only works** when requests come from your specific domains. Anyone who copies the key from source or network traffic cannot use it from a different origin.
+
+### 2. Restrict to Specific APIs
+
+In the same API key settings:
+
+1. Under **API restrictions**, select **Restrict key**
+2. Choose only **Map Tiles API**
+3. Save
+
+This ensures the key cannot be used for other Google Cloud services even if leaked.
+
+### 3. Set a Budget Alert
+
+1. Go to [Google Cloud → Billing → Budgets & Alerts](https://console.cloud.google.com/billing)
+2. Create a budget (e.g. **AU$10/month**)
+3. Set alert thresholds at 50%, 80%, and 100%
+4. Optionally enable **auto-disable billing** to hard-cap spending
+
+### 4. For LinkedIn / Public Demos
+
+If you share a live demo link on LinkedIn or social media:
+
+- **Deploy to Vercel** with the API key set as an [Environment Variable](https://vercel.com/docs/environment-variables) (not in code)
+- **Lock the referrer** to your custom domain (e.g. `https://worldview.kt-o.com/*`) (step 1 above)
+- **Monitor usage** in the [Cloud Console → APIs & Services → Dashboard](https://console.cloud.google.com/apis/dashboard)
+- **Set a daily quota**: Go to **Map Tiles API → Quotas** and set a reasonable daily request limit (e.g. 1,000 requests/day)
+- Consider adding a rate-limiting middleware to your Express proxy if traffic spikes
+
+> With referrer restrictions + API restrictions + budget cap in place, even if 10,000 people click your LinkedIn post, they **cannot** abuse the key from their own sites or scripts — it only works on your domain.
+
+---
 
 ### Running the Application
 
@@ -144,6 +248,71 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 npm run build
 npm run preview
 ```
+
+---
+
+## Deploying to Vercel
+
+This project is pre-configured for [Vercel](https://vercel.com/) via `vercel.json`. The Express backend runs as a Vercel Serverless Function.
+
+### 1. Import the Project
+
+1. Push your repo to GitHub
+2. Go to [vercel.com/new](https://vercel.com/new) → **Import Git Repository**
+3. Select your repo → Vercel auto-detects the Vite framework from `vercel.json`
+4. Click **Deploy**
+
+### 2. Set Environment Variables
+
+In your Vercel project dashboard:
+
+1. Go to **Settings → Environment Variables**
+2. Add each key from both `.env` files:
+
+| Variable | Environment |
+|---|---|
+| `VITE_GOOGLE_API_KEY` | Production, Preview |
+| `VITE_CESIUM_ION_TOKEN` | Production, Preview |
+| `WINDY_API_KEY` | Production, Preview |
+| `NSW_TRANSPORT_API_KEY` | Production, Preview |
+| `GOOGLE_MAPS_API_KEY` | Production, Preview |
+| `OPENSKY_CLIENT_ID` | Production, Preview |
+| `OPENSKY_CLIENT_SECRET` | Production, Preview |
+
+> **Note:** `VITE_*` variables are embedded in the client bundle at build time. Server-side variables are available to the serverless function at runtime.
+
+### 3. Add a Custom Domain
+
+To point `worldview.kt-o.com` to your Vercel deployment:
+
+1. In your Vercel project → **Settings → Domains**
+2. Enter `worldview.kt-o.com` → click **Add**
+3. Vercel will show you the DNS record to create. Go to your DNS provider for `kt-o.com` and add:
+
+   | Type | Name | Value |
+   |---|---|---|
+   | **CNAME** | `worldview` | `cname.vercel-dns.com` |
+
+   *Alternatively, if `kt-o.com` itself is on Vercel, you can use Vercel Nameservers.*
+
+4. Wait for DNS propagation (usually < 5 minutes)
+5. Vercel automatically provisions an SSL certificate — `https://worldview.kt-o.com` will be live
+
+### 4. Update Google API Key Restrictions
+
+Once the domain is live, update your Google Cloud API key:
+
+1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Click your API key → **HTTP referrers**
+3. Add `https://worldview.kt-o.com/*`
+4. Remove any old `*.vercel.app` entries you no longer need
+5. Save
+
+### 5. Verify
+
+- Visit `https://worldview.kt-o.com` — globe should load with 3D tiles
+- Check **Network** tab in DevTools — API requests should route to `/api/*` serverless functions
+- Confirm the API key only works from your domain by testing from a different origin (should get 403)
 
 ---
 
@@ -443,6 +612,26 @@ Monospace font stack: `JetBrains Mono`, `Fira Code`, `SF Mono`, `monospace`
 
 ---
 
+## Security
+
+> **No API keys, tokens, or credentials are included in this repository.**
+
+All sensitive values are loaded from `.env` files which are excluded via `.gitignore`. If you fork or clone this repo, you must supply your own API keys.
+
+If you discover a credential leak or security issue, please open an issue immediately.
+
+### Quick Checklist Before Pushing
+
+- [ ] `.env` and `server/.env` are in `.gitignore` (they are by default)
+- [ ] No API keys hardcoded in source files
+- [ ] Google API key has HTTP referrer restrictions applied
+- [ ] Google API key is restricted to Map Tiles API only
+- [ ] Budget alerts configured in Google Cloud Console
+
+---
+
 ## Licence
 
 This project is for **educational and demonstration purposes only**. External API usage is subject to each provider's terms of service and rate limits. No commercial use is intended.
+
+**You are responsible for securing your own API keys and managing your own API usage costs.** The authors accept no liability for charges incurred through misconfigured or unrestricted API credentials.
