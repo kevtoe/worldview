@@ -24,6 +24,8 @@ GitHub `main` at `44e0900`.
   vulnerabilities.
 - Created and connected personal Vercel project
   `baongoncatering-8366s-projects/worldview`, then deployed a production build.
+- Promoted the branch's successful Vercel preview so production now runs the
+  exact committed source (`dpl_5wYgZJH9n2RWhuivqfS6JwHyVohc`).
 - Attached `worldview.khoa.to` to the Vercel project and added the Porkbun CNAME
   `worldview` → `caa65ed1dc5eddc9.vercel-dns-017.com.` with a 600-second TTL.
   Vercel reports the custom domain is correctly configured and verified.
@@ -34,6 +36,8 @@ GitHub `main` at `44e0900`.
 - `npm run build` passes with Vite 7.3.6.
 - `npm audit --omit=dev` reports zero vulnerabilities.
 - `git diff --check` passes.
+- `https://worldview.khoa.to/` and `/api/health` both return HTTP 200 from the
+  promoted personal Vercel deployment; the production error-log scan is clean.
 - `npm run lint` still reports 36 errors and 14 warnings in pre-existing source
   files (mainly `any` types and React hook rules); this refresh does not alter
   those files.
