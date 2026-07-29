@@ -34,3 +34,10 @@ credentials.json
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*
+# ...but the template must stay tracked — it is the setup path for forks
+!.env.example
+
+# Local agent/session working notes — not part of the public project
+SESSION_LEDGER.md

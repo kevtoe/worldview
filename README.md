@@ -1,19 +1,20 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/WORLDVIEW-Tactical%20Intelligence-00D4FF?style=for-the-badge&labelColor=0A0A0A" alt="WorldView" />
+  <img src="public/worldview-cover.jpg" alt="Worldview real-time global intelligence cover" width="100%" />
 </p>
 
-<h1 align="center">🌍 WORLDVIEW — Tactical Intelligence Platform</h1>
+<h1 align="center">WORLDVIEW</h1>
 
 <p align="center">
-  A real-time global intelligence dashboard rendered on a 3D CesiumJS globe.<br/>
-  Track flights, satellites, ships, earthquakes, traffic, and CCTV cameras — all in one tactical interface.
+  <strong>See the world as a live system.</strong><br/>
+  Explore flights, satellites, ships, earthquakes, traffic and public CCTV feeds
+  on one interactive 3D globe.
 </p>
 
 <p align="center">
-  <a href="https://worldview.kt-o.com"><strong>🔗 Live Demo — worldview.kt-o.com</strong></a>
+  <a href="https://worldview.khoa.to"><strong>Open the live globe</strong></a>
+  ·
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkevtoe%2Fworldview"><strong>Deploy your own</strong></a>
 </p>
-
-https://github.com/user-attachments/assets/b2bd05d2-f7be-49c8-a8c6-452b6b60cb34
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
@@ -24,11 +25,22 @@ https://github.com/user-attachments/assets/b2bd05d2-f7be-49c8-a8c6-452b6b60cb34
   <img src="https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white" alt="Express 5" />
 </p>
 
+<p align="center">
+  <a href="https://worldview.khoa.to"><img alt="Live demo" src="https://img.shields.io/badge/live-worldview.khoa.to-00D4FF?style=for-the-badge&labelColor=0A0A0A"></a>
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkevtoe%2Fworldview"><img alt="Deploy with Vercel" src="https://vercel.com/button"></a>
+</p>
+
+https://github.com/user-attachments/assets/b2bd05d2-f7be-49c8-a8c6-452b6b60cb34
+
 ---
 
 ## Overview
 
-WorldView is a full-stack tactical intelligence platform that aggregates multiple real-time data sources onto an interactive 3D globe. Inspired by military command-and-control interfaces, it features a dark tactical UI with optional post-processing effects (CRT scanlines, night vision, thermal imaging).
+Worldview is a full-stack situational-awareness dashboard that aggregates
+multiple live public data sources onto an interactive 3D globe. It combines a
+high-density tactical interface with optional CRT, night-vision and thermal
+rendering modes—without hiding the underlying sources or requiring every API key
+to get started.
 
 ### Key Capabilities
 
@@ -38,8 +50,8 @@ WorldView is a full-stack tactical intelligence platform that aggregates multipl
 | 🛰️ **Satellites** | CelesTrak TLE + SGP4 | 2 s propagation | Real-time orbital position, orbit paths, ground tracks, nadir lines |
 | 🌋 **Earthquakes** | USGS GeoJSON | 60 s | Past 24 hours, magnitude-scaled pulsing markers with colour coding |
 | 🚗 **Traffic** | OpenStreetMap Overpass | On-demand | Road network overlay with animated vehicle particle simulation |
-| � **Naval / AIS** | AISStream.io WebSocket | 30 s (20 s burst + 60 s cache) | Global vessel tracking with ship type categorisation, heading trails, dead-reckoning |
-| �📹 **CCTV** | TfL, Austin TX, Transport NSW | 5 min | Live camera feeds from London, Austin, and New South Wales |
+| 🚢 **Naval / AIS** | AISStream.io WebSocket | 30 s (20 s burst + 60 s cache) | Global vessel tracking with ship type categorisation, heading trails, dead-reckoning |
+| 📹 **CCTV** | TfL, Austin TX, Transport NSW | 5 min | Live camera feeds from London, Austin, and New South Wales |
 
 ---
 
@@ -92,7 +104,7 @@ The interface features:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/kevtoe/worldview.git
 cd worldview
 
 # Install dependencies
@@ -212,12 +224,13 @@ npm run preview
 
 This project is pre-configured for [Vercel](https://vercel.com/) via `vercel.json`. The Express backend runs as a Vercel Serverless Function.
 
-### 1. Import the Project
+### 1. Deploy your copy
 
-1. Push your repo to GitHub
-2. Go to [vercel.com/new](https://vercel.com/new) → **Import Git Repository**
-3. Select your repo → Vercel auto-detects the Vite framework from `vercel.json`
-4. Click **Deploy**
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkevtoe%2Fworldview)
+
+The template imports this repository, detects Vite from `vercel.json` and deploys
+the key-free fallback experience immediately. Add optional API credentials
+afterwards to unlock richer data sources.
 
 ### 2. Set Environment Variables
 
