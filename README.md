@@ -589,6 +589,20 @@ If you discover a credential leak or security issue, please open an issue immedi
 
 ## Licence
 
-This project is for **educational and demonstration purposes only**. External API usage is subject to each provider's terms of service and rate limits. No commercial use is intended.
+Released under the [MIT Licence](LICENSE) — free to use, modify, fork and build
+on, including commercially.
 
-**You are responsible for securing your own API keys and managing your own API usage costs.** The authors accept no liability for charges incurred through misconfigured or unrestricted API credentials.
+### Third-party data and API terms
+
+The MIT licence covers **this project's own source code**. It does not and cannot
+grant any rights over the external services this app consumes. Every data source
+listed under [Acknowledgements](#acknowledgements) — Google Photorealistic 3D
+Tiles, FlightRadar24, adsb.fi, OpenSky, CelesTrak, USGS, Overpass, TfL, Transport
+NSW, AISStream and the rest — carries its own terms of service, licensing and
+rate limits. Several restrict commercial or high-volume use. **Check the terms of
+each provider you enable before deploying anything beyond personal or
+demonstration use.**
+
+**You are responsible for securing your own API keys and managing your own API
+usage costs.** The authors accept no liability for charges incurred through
+misconfigured or unrestricted API credentials.

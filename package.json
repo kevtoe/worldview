@@ -2,6 +2,14 @@
   "name": "worldview",
   "private": true,
   "version": "0.0.0",
+  "description": "Real-time global intelligence on a 3D globe — live flights, satellites, ships, earthquakes, traffic and public CCTV feeds.",
+  "license": "MIT",
+  "author": "Kevin (Khoa) To (https://khoa.to)",
+  "homepage": "https://worldview.khoa.to",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kevtoe/worldview.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
