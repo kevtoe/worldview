@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { IntelFeedItem } from '../components/ui/IntelFeed';
+import { usePageVisible } from './usePageVisible';
 
 /**
  * AIS Navigational Status codes.
@@ -90,9 +91,13 @@ export function useShips(enabled: boolean, movingOnly = true) {
 
   const prevCountRef = useRef(0);
   const consecutiveErrorsRef = useRef(0);
+  const visible = usePageVisible();
+
+  // Suspend polling while the tab is hidden (see usePageVisible).
+  const shouldPoll = enabled && visible;
 
   useEffect(() => {
-    if (!enabled) {
+    if (!shouldPoll) {
       setShips([]);
       setIsLoading(false);
       return;
@@ -161,7 +166,7 @@ export function useShips(enabled: boolean, movingOnly = true) {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [enabled, movingOnly]);
+  }, [shouldPoll, movingOnly]);
 
   return { ships, feedItems, isLoading };
 }
