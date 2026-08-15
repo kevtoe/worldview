@@ -128,8 +128,8 @@ Then edit each file with your own API keys (see [Obtaining API Keys](#obtaining-
 
 | Variable | Required? | Purpose |
 |---|---|---|
-| `VITE_GOOGLE_API_KEY` | Optional | Google Maps 3D Photorealistic Tiles (falls back to OpenStreetMap) |
-| `VITE_CESIUM_ION_TOKEN` | Optional | Cesium Ion terrain/imagery services |
+| `VITE_CESIUM_ION_TOKEN` | Recommended | Streams Google Photorealistic 3D Tiles via Cesium ion. Free Community tier covers 1,000 root tiles/month; scope the token to asset `2275207` and your domain. Falls back to OpenStreetMap when absent or over quota. |
+| `VITE_GOOGLE_API_KEY` | Optional | Bills Google directly for the same 3D tiles. Only set this if you want paid volume beyond the ion free tier — it is public in the JS bundle, so restrict it to the Map Tiles API, add an HTTP referrer restriction, and set a daily quota cap. |
 | `WINDY_API_KEY` | Optional | Windy webcam API (reserved, not yet active) |
 | `NSW_TRANSPORT_API_KEY` | Optional | Transport for NSW CCTV cameras |
 | `AISSTREAM_API_KEY` | Optional | AISStream.io global AIS ship tracking |

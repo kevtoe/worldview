@@ -22,6 +22,19 @@ import {
 } from '../../shaders/postprocess';
 
 // Configure API keys
+//
+// Two routes exist to Google Photorealistic 3D Tiles, and the safer one is the
+// default. `createGooglePhotorealistic3DTileset()` uses GoogleMaps.defaultApiKey
+// when one is set and talks to Google's Map Tiles API directly; when no key is
+// set it falls back to streaming the same tiles through Cesium ion asset
+// 2275207 using Ion.defaultAccessToken.
+//
+// Prefer the ion route. Any credential shipped to a browser is public, so the
+// question is only what an abused one costs you. A leaked Google Maps key bills
+// an uncapped Google Cloud account; a leaked ion token burns a capped ion quota
+// and can be scoped to a single asset and a single domain, then revoked and
+// reissued in one click. Only set VITE_GOOGLE_API_KEY if you deliberately want
+// direct Google billing, and referrer-restrict it if you do.
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 if (GOOGLE_API_KEY) {
   GoogleMaps.defaultApiKey = GOOGLE_API_KEY;
@@ -31,6 +44,14 @@ const CESIUM_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN;
 if (CESIUM_ION_TOKEN) {
   Ion.defaultAccessToken = CESIUM_ION_TOKEN;
 }
+
+/**
+ * Whether Google 3D tiles can be loaded at all. Either credential is enough:
+ * a Google key takes the direct route, an ion token takes the ion route.
+ * Without this, gating on GOOGLE_API_KEY alone would silently skip 3D tiles
+ * and drop to OSM even when a perfectly good ion token was configured.
+ */
+const CAN_LOAD_GOOGLE_3D = Boolean(GOOGLE_API_KEY || CESIUM_ION_TOKEN);
 
 interface GlobeViewerProps {
   shaderMode: ShaderMode;
@@ -151,8 +172,9 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
       globe.translucency.backFaceAlpha = 1.0;
     }
 
-    // Only attempt Google tiles if mapTiles === 'google'
-    if (mapTiles === 'google' && GOOGLE_API_KEY) {
+    // Only attempt Google tiles if mapTiles === 'google' and we hold a usable
+    // credential (Google key or ion token — see CAN_LOAD_GOOGLE_3D)
+    if (mapTiles === 'google' && CAN_LOAD_GOOGLE_3D) {
       try {
         // Clear imagery & hide the globe so its black surface doesn't bleed
         // through gaps in the Google 3D tileset
@@ -210,7 +232,7 @@ export default function GlobeViewer({ shaderMode, mapTiles, onCameraChange, onVi
 
     const globe = viewer.scene.globe;
 
-    if (mapTiles === 'google' && !google3dReady && GOOGLE_API_KEY) {
+    if (mapTiles === 'google' && !google3dReady && CAN_LOAD_GOOGLE_3D) {
       // Switch to Google 3D Tiles — hide globe & strip OSM imagery
       viewer.imageryLayers.removeAll();
       if (globe) globe.show = false;
