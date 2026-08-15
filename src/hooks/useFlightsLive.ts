@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Flight } from './useFlights';
+import { usePageVisible } from './usePageVisible';
 
 const LIVE_POLL_INTERVAL = 5_000;    // 5s — respectful of adsb.fi rate limits
 const ERROR_BACKOFF = 15_000;        // 15s after error
@@ -30,8 +31,13 @@ export function useFlightsLive(
   const stableLat = Math.round(cameraLat * 2) / 2;
   const stableLon = Math.round(cameraLon * 2) / 2;
 
-  // Only activate live polling when zoomed in (<5,000 km) or tracking an entity
-  const shouldPoll = enabled && (cameraAlt < 5_000_000 || isTracking);
+  const visible = usePageVisible();
+
+  // Only activate live polling when zoomed in (<5,000 km) or tracking an entity,
+  // and only while the tab is actually in front. This is the highest-frequency
+  // poller in the app, so a backgrounded tab left open all day would otherwise
+  // keep spending serverless invocations on aircraft nobody is watching.
+  const shouldPoll = enabled && visible && (cameraAlt < 5_000_000 || isTracking);
 
   useEffect(() => {
     if (!shouldPoll) {

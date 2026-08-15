@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { IntelFeedItem } from '../components/ui/IntelFeed';
+import { usePageVisible } from './usePageVisible';
 
 export interface Flight {
   icao24: string;
@@ -39,9 +40,14 @@ export function useFlights(enabled: boolean) {
 
   const prevCountRef = useRef(0);
   const consecutiveErrorsRef = useRef(0);
+  const visible = usePageVisible();
+
+  // Suspend polling while the tab is hidden; positions go stale immediately
+  // anyway, so there is nothing worth paying to keep fetching in the background.
+  const shouldPoll = enabled && visible;
 
   useEffect(() => {
-    if (!enabled) {
+    if (!shouldPoll) {
       setFlights([]);
       return;
     }
@@ -101,7 +107,7 @@ export function useFlights(enabled: boolean) {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [enabled]); // Only re-subscribe when enabled changes
+  }, [shouldPoll]); // Re-subscribe when the layer toggles or the tab is shown/hidden
 
   return { flights, feedItems };
 }

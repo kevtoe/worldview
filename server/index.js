@@ -23,6 +23,65 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// ─── Edge cache policy ────────────────────────────────────────
+/**
+ * Vercel's CDN only caches a function response when that response carries a
+ * shared-cache directive. Without one, every poll from every browser tab is a
+ * billed function invocation, which was the dominant cost on this project.
+ *
+ * `s-maxage` is how long the edge may serve a response without calling the
+ * function at all; `stale-while-revalidate` lets it keep serving a slightly
+ * stale copy while it refreshes in the background. Values are matched to each
+ * feed's real update rate, so this costs no freshness the data actually has.
+ *
+ * Responses are cached per full URL including the query string, so the
+ * grid-snapped coordinates the frontend already sends collapse neatly onto a
+ * small number of cache keys.
+ *
+ * IMPORTANT: /api/geolocation is derived from the caller's IP address. It must
+ * never enter a shared cache, or one visitor's location would be served to
+ * everybody else. It is pinned to no-store below.
+ */
+const EDGE_CACHE_RULES = [
+  [/^\/api\/geolocation/,    'private, no-store'],
+  [/^\/api\/health/,         'no-store'],
+  [/^\/api\/flights\/live/,  'public, s-maxage=5, stale-while-revalidate=25'],
+  [/^\/api\/flights/,        'public, s-maxage=30, stale-while-revalidate=120'],
+  [/^\/api\/ships/,          'public, s-maxage=60, stale-while-revalidate=300'],
+  [/^\/api\/earthquakes/,    'public, s-maxage=60, stale-while-revalidate=300'],
+  [/^\/api\/cctv\/image/,    'public, s-maxage=300, stale-while-revalidate=3600'],
+  [/^\/api\/cctv/,           'public, s-maxage=300, stale-while-revalidate=1800'],
+  [/^\/api\/gdelt/,          'public, s-maxage=300, stale-while-revalidate=1800'],
+  [/^\/api\/asteroids/,      'public, s-maxage=1800, stale-while-revalidate=3600'],
+  [/^\/api\/satellites/,     'public, s-maxage=7200, stale-while-revalidate=86400'],
+  [/^\/api\/traffic\/roads/, 'public, s-maxage=86400, stale-while-revalidate=604800'],
+];
+
+app.use((req, res, next) => {
+  const rule = EDGE_CACHE_RULES.find(([pattern]) => pattern.test(req.path));
+  if (!rule) return next();
+
+  // Apply the header at send time so we can see the final status code. Caching
+  // an error would pin a failure at the edge for the whole s-maxage window.
+  const applyPolicy = () => {
+    if (res.headersSent) return;
+    const cacheable = res.statusCode >= 200 && res.statusCode < 300;
+    res.setHeader('Cache-Control', cacheable ? rule[1] : 'no-store');
+  };
+
+  const { json, send } = res;
+  res.json = function patchedJson(...args) {
+    applyPolicy();
+    return json.apply(this, args);
+  };
+  res.send = function patchedSend(...args) {
+    applyPolicy();
+    return send.apply(this, args);
+  };
+
+  next();
+});
+
 // ─── Cache ────────────────────────────────────────────────────
 const cache = new NodeCache();
 
@@ -937,7 +996,10 @@ app.get('/api/flights/live', async (req, res) => {
     if (!adsbRes.ok) throw new Error(`adsb.fi HTTP ${adsbRes.status}`);
     const adsbData = await adsbRes.json();
 
-    // Also load the FR24 route registry for enrichment (origin/dest airports)
+    // Also load the FR24 route registry for enrichment (origin/dest airports).
+    // Kick off a refresh if it has expired; we never await it, so this request
+    // is served immediately from whatever is already cached.
+    ensureRouteRegistry();
     const routeMap = cache.get('fr24-route-registry') || {};
 
     const flights = (adsbData.aircraft || [])
@@ -1020,84 +1082,117 @@ async function refreshRouteRegistry() {
   }
 }
 
-// Start route registry refresh loop (every 60s)
-setInterval(refreshRouteRegistry, 60_000);
-// Initial fetch after 5s (let server start up first)
-setTimeout(refreshRouteRegistry, 5_000);
+/**
+ * Keep the route registry warm without a background timer.
+ *
+ * This used to be `setInterval(refreshRouteRegistry, 60_000)` at module scope.
+ * That works for a long-lived server but is wrong on serverless: the timer is
+ * installed on every cold start and then keeps firing inside each warm
+ * instance, hitting FlightRadar24 with no user request attached. Under Active
+ * CPU pricing that is billed compute nobody asked for, and it scales with the
+ * number of warm instances rather than with actual usage.
+ *
+ * Instead we refresh on demand. A request that finds the registry expired
+ * kicks off a refresh and returns immediately with whatever is cached, so no
+ * request ever waits on FR24. The 90s cache TTL plus the in-flight guard means
+ * at most one refresh runs at a time, and none at all when nobody is using the
+ * site.
+ */
+let routeRegistryRefreshing = null;
 
-// ─── WebSocket for real-time flight push ──────────────────────
-const server = createServer(app);
-const wss = new WebSocketServer({ server, path: '/ws' });
+function ensureRouteRegistry() {
+  if (cache.get('fr24-route-registry')) return; // still fresh
+  if (routeRegistryRefreshing) return; // already in flight
+  routeRegistryRefreshing = refreshRouteRegistry().finally(() => {
+    routeRegistryRefreshing = null;
+  });
+}
 
-let flightPollingInterval = null;
+/**
+ * Local development server, including the WebSocket flight push.
+ *
+ * All of this is deliberately confined to standalone mode. Vercel imports this
+ * module as a serverless handler, where an HTTP server that never listens and a
+ * WebSocket server that can never receive a connection are pure cold-start
+ * overhead, and the 10s polling interval below would be billed background CPU.
+ * The browser already falls back to polling /api/flights/live in production.
+ */
+function startStandaloneServer() {
+  const server = createServer(app);
+  const wss = new WebSocketServer({ server, path: '/ws' });
 
-wss.on('connection', (ws) => {
-  console.log('[WS] Client connected');
+  let flightPollingInterval = null;
 
-  ws.on('message', (msg) => {
-    try {
-      const data = JSON.parse(msg.toString());
-      if (data.type === 'subscribe-flights' && data.bbox) {
-        // Start polling flights for this bounding box
-        startFlightPolling(data.bbox);
+  async function startFlightPolling(bbox) {
+    if (flightPollingInterval) clearInterval(flightPollingInterval);
+
+    const poll = async () => {
+      try {
+        const token = await getOpenSkyToken();
+        const params = new URLSearchParams({
+          lamin: String(bbox.south),
+          lomin: String(bbox.west),
+          lamax: String(bbox.north),
+          lomax: String(bbox.east),
+        });
+
+        const apiRes = await fetch(
+          `https://opensky-network.org/api/states/all?${params}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (!apiRes.ok) return;
+        const data = await apiRes.json();
+
+        const flights = (data.states || []).map((s) => ({
+          icao24: s[0],
+          callsign: (s[1] || '').trim(),
+          country: s[2],
+          longitude: s[5],
+          latitude: s[6],
+          altitude: s[7],
+          onGround: s[8],
+          velocity: s[9],
+          heading: s[10],
+          verticalRate: s[11],
+        }));
+
+        const payload = JSON.stringify({ type: 'flights', data: flights, time: Date.now() });
+        for (const client of wss.clients) {
+          if (client.readyState === 1) client.send(payload);
+        }
+      } catch (err) {
+        console.error('[WS] Flight poll error:', err.message);
       }
-    } catch { /* ignore malformed messages */ }
+    };
+
+    await poll();
+    flightPollingInterval = setInterval(poll, 10_000); // Every 10s
+  }
+
+  wss.on('connection', (ws) => {
+    console.log('[WS] Client connected');
+
+    ws.on('message', (msg) => {
+      try {
+        const data = JSON.parse(msg.toString());
+        if (data.type === 'subscribe-flights' && data.bbox) {
+          // Start polling flights for this bounding box
+          startFlightPolling(data.bbox);
+        }
+      } catch { /* ignore malformed messages */ }
+    });
+
+    ws.on('close', () => {
+      console.log('[WS] Client disconnected');
+      if (wss.clients.size === 0 && flightPollingInterval) {
+        clearInterval(flightPollingInterval);
+        flightPollingInterval = null;
+      }
+    });
   });
 
-  ws.on('close', () => {
-    console.log('[WS] Client disconnected');
-    if (wss.clients.size === 0 && flightPollingInterval) {
-      clearInterval(flightPollingInterval);
-      flightPollingInterval = null;
-    }
-  });
-});
-
-async function startFlightPolling(bbox) {
-  if (flightPollingInterval) clearInterval(flightPollingInterval);
-
-  const poll = async () => {
-    try {
-      const token = await getOpenSkyToken();
-      const params = new URLSearchParams({
-        lamin: String(bbox.south),
-        lomin: String(bbox.west),
-        lamax: String(bbox.north),
-        lomax: String(bbox.east),
-      });
-
-      const apiRes = await fetch(
-        `https://opensky-network.org/api/states/all?${params}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (!apiRes.ok) return;
-      const data = await apiRes.json();
-
-      const flights = (data.states || []).map((s) => ({
-        icao24: s[0],
-        callsign: (s[1] || '').trim(),
-        country: s[2],
-        longitude: s[5],
-        latitude: s[6],
-        altitude: s[7],
-        onGround: s[8],
-        velocity: s[9],
-        heading: s[10],
-        verticalRate: s[11],
-      }));
-
-      const payload = JSON.stringify({ type: 'flights', data: flights, time: Date.now() });
-      for (const client of wss.clients) {
-        if (client.readyState === 1) client.send(payload);
-      }
-    } catch (err) {
-      console.error('[WS] Flight poll error:', err.message);
-    }
-  };
-
-  await poll();
-  flightPollingInterval = setInterval(poll, 10_000); // Every 10s
+  return server;
 }
 
 // ─── Export for Vercel Serverless ──────────────────────────────
@@ -1112,7 +1207,7 @@ const isDirectRun = process.argv[1] && (
 );
 
 if (isDirectRun) {
-  server.listen(PORT, () => {
+  startStandaloneServer().listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════╗
 ║   WORLDVIEW PROXY SERVER              ║
