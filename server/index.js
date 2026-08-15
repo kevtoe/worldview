@@ -569,8 +569,15 @@ app.get('/api/cctv/image', async (req, res) => {
 
     const imgRes = await fetch(imageUrl, {
       headers: {
-        'User-Agent': 'WorldView-CCTV/1.0',
-        Accept: 'image/*',
+        // Must look like a browser. Transport for NSW inspects the User-Agent
+        // and answers a non-browser one with a 307-byte "camera image is
+        // temporarily unavailable" HTML page — served as HTTP 200, so it looks
+        // like a success. A realistic UA returns the real JPEG. Verified across
+        // multiple NSW cameras; the Referer header makes no difference.
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
       },
     });
 
@@ -579,9 +586,21 @@ app.get('/api/cctv/image', async (req, res) => {
     }
 
     const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+
+    // Guard against soft failures: several sources answer HTTP 200 with an HTML
+    // placeholder instead of an image. Passing that through would reach the
+    // browser as a broken <img> ("SIGNAL LOST") and, worse, would be cached at
+    // the edge as if it were a good response. Fail loudly instead — the cache
+    // middleware sets no-store on non-2xx, so a blip is never pinned at the edge.
+    if (!contentType.startsWith('image/')) {
+      console.warn(`[CCTV-IMG] Upstream returned ${contentType} for ${imageUrl}`);
+      return res
+        .status(502)
+        .json({ error: `Upstream returned ${contentType}, not an image` });
+    }
+
     res.set({
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=60',
       'Access-Control-Allow-Origin': '*',
     });
 
